@@ -56,7 +56,8 @@ def home(request):
         </div>
     </div>
 </nav>
-</body>
+      </body>
+      <script src="common.js"></script>
 </html>
 
 ```

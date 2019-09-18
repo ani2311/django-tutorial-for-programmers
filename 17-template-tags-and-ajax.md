@@ -103,7 +103,8 @@ Django template tag/filter 其實就是 Python function，只是我們要用一�
 <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
 {% block js %}{% endblock js %}
 
-</body>
+      </body>
+      <script src="common.js"></script>
 </html>
 ```
 

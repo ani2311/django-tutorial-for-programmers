@@ -106,7 +106,8 @@ python manage.py startapp base
   </div>
 </nav>
 {% endblock body %}
-</body>
+      </body>
+      <script src="common.js"></script>
 </html>
 ```
 

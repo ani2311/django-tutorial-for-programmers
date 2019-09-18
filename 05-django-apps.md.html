@@ -1,0 +1,109 @@
+
+    <html>
+      <head>
+        <title>Chapter05</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>Django 自稱 MTV 框架，把自己分成三個部分：models、templates、views。如果你最近學過開發框架（web 或 GUI 或其他的），可能會比較熟悉 MVC（model—view—controller）結構，不過這些東西概念上基本是一樣的。在 Django 中：</p>
+<ul>
+<li>Models 代表資料，通常是用來與資料庫溝通。</li>
+<li>Templates 代表把東西呈現給使用者的媒介。</li>
+<li>Views 用來處理 models，以將其呈現於 templates 中，或者處理使用者送來的資料（以 HTTP POST 等方式），並存入 models。</li>
+</ul>
+<p>在實務上，Django templates 的角色比較像 MVC 的 views，但是比起後者，templates 承擔的責任更少，只負責資料呈現，而幾乎不包含任何邏輯（除非是用來呈現的邏輯）。Django views 則比較位於 MVC 的 views 與 controllers 之間。但 MVC 中 controllers 的邏輯不全然包含於 Django views；Django 通常習慣把部分邏輯放在 models，並且提供了一些額外的工具，來簡化 views 需要承擔的責任。我們之後也會稍微介紹一下這些東西。但即使如此，Django views 仍然會像 MVC 的 controllers 一樣，負責連結 models、templates、以及 Django 提供的其他工具。</p>
+<p>不論如何，在使用這類框架時，我們通常都是從設計 models 開始。所以首先來想想 lunch 這個專案應該包含哪些元件。我們（好啦，我）希望這個程式有兩個部分：</p>
+<ul>
+<li>使用者註冊與登入。</li>
+<li>列出與顯示店家資訊，包括名稱與菜單圖片。使用者可以自由新增、修改、刪除。</li>
+<li>選取一家店，讓每個使用者可以填入自己想吃什麼。</li>
+</ul>
+<p>我們可以使用 Django 內建的使用者認證功能處理第一部分，所以這先放著。第二與第三部分功能基本上是分開的（雖然第三部分會需要用到第二部分的功能），所以在 Django 中，我們會把它們各自放在不同的 <strong>app</strong> 裡面。如果你使用過其他 web 框架，可能會覺得這個名稱很怪——app 不是應該代表整個網站嗎？嗯，不管怎樣，反正在 Django 中，網站叫做 <em>project</em>，而組成網站的元件則是 <em>app</em>。習慣就好。每個 Django app 事實上也會是個完整的 Python module，所以可以獨立變成一個可安裝的 Python 函式庫。所以在 Django 中，很重視各 app 之間的獨立性。當然 app 可以 depend on 另一個 app，但兩個 apps 不應該互相需要對方；責任必須劃分清楚。不過這應該是很基本的設計概念吧。</p>
+<p>現在開始來實作第二部分。Django 提供了一個指令，可以方便你建立 app：</p>
+<pre><code class="bash language-bash">pipenv run python manage.py startapp stores
+</code></pre>
+<p>這會建立一個叫 <code>stores</code> 的目錄，用來包裝我們的 app（其名稱就是 <code>stores</code>）。在 Django 中，通常習慣把 app 取名為它主要功能的 model 的複數形。這個 app 主要負責的是管理店家，所以我們會把主要的 model 取名為 <code>Store</code>。所以 app 名稱就是 stores 了。注意 Python 習慣把 module 取名為全小寫（可以使用底線），而既然 Django app 本身是 Python module，所以也應該遵從相同的命名規則。</p>
+<p>我們還要讓 Django 知道這個 app 的存在。打開 <code>lunch/settings/base.py</code>，把 <code>stores</code> 這個 app 加入 <code>INSTALLED_APPS</code> 列表：</p>
+<pre><code class="python language-python">INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'stores',
+]
+</code></pre>
+<p>Django 並沒有硬性規定 app 的順序，不過一般除了有特殊理由（例如需要覆蓋內建的元件），都會把自己的 apps 排在最面。大致上的規則和 Python 的 import 習慣類似：先放內建，再來第三方套件，最後是自己的。</p>
+<p>現在看看你的專案目錄：</p>
+<pre><code>lunch
+├── lunch
+│&amp;nbsp;&amp;nbsp; ├── settings
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; ├── base.py
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; └── local.py
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── urls.py
+│&amp;nbsp;&amp;nbsp; └── wsgi.py
+├── stores
+│&amp;nbsp;&amp;nbsp; ├── migrations
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; └── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── admin.py
+│&amp;nbsp;&amp;nbsp; ├── apps.py
+│&amp;nbsp;&amp;nbsp; ├── models.py
+│&amp;nbsp;&amp;nbsp; ├── tests.py
+│&amp;nbsp;&amp;nbsp; └── views.py
+└── manage.py
+</code></pre>
+<p><code>stores</code> 裡面各項目的用途如下：</p>
+<ul>
+<li><code>migrations</code> 存放 database migration，也就是資料庫結構改變的資料。這些檔案通常不會直接被執行，而是在你透過 Django 指令改變資料庫結構時，用來提示 Django 你的資料在某個時間點的結構。</li>
+<li><code>admins.py</code> 設定 Django admin。</li>
+<li><code>apps.py</code> 設定 app 的性質（例如在 admin 裡的名稱）。</li>
+<li><code>models.py</code> 和 <code>views.py</code> 放 models 和 views 的程式。</li>
+<li><code>tests.py</code> 放單元測試。</li>
+</ul>
+<p>如果你不需要某些檔案，其實可以刪除它們；如果你有其他需求，也同樣可以另外新增其他檔案與目錄。不過我們首先會先使用預設產生的檔案。明天我們要來看看 <code>views.py</code>，為你的網站建立第一個（不是預設的）頁面。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,98 @@
+
+    <html>
+      <head>
+        <title>Chapter01</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+      <div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>2014 年 9 月 27 日，台北將舉行世界第三、亞洲第一場 <a href="http://djangogirls.org/taipei">Django Girls</a> 工作坊。這個工作坊的目的，是希望能以一個簡單易用的網站開發框架——Django——帶領非程式專業的人們進入程式設計的領域。我們的主要目標是女性，因為程式設計領域目前的性別鴻溝仍然太大；我們相信，若能有更多來自不同背景的人加入這個行列，能夠為這個領域的所有人，不論是已經身在其中的老手，或者想要加入的新人，都能帶來好處。</p>
+<p>為了達到推廣目的，Django Girls 花了很大的功夫降低非程式背景者從「一無所知」到「能夠開始寫程式」之間的門檻。我們花了很多精力，為參與會眾量身訂做教學，盡可能讓他們不會因為太早遇到挫折而退縮。</p>
+<p>但身為程式人，我也有一些其他寫程式的朋友問我要如何入門 Django。Django Girls 適合嗎？完全不適合。我們也不會收你當學員。由於初衷是推廣，Django Girls 的教學再怎麼說還是淺嚐即止。如果你已經會寫程式，甚至已經知道 web framework 是怎麼回事，那麼用 Django Girls 的教學入門只是浪費大家的時間。</p>
+<p>在未來一個月（希望）內，我會用一個完全不同的角度切入 Django。我會假設你已經：</p>
+<ul>
+<li>會寫至少一種<a href="http://en.wikipedia.org/wiki/High-level_programming_language">高階程式語言</a>（C 也算）。</li>
+<li>有<a href="http://zh.wikipedia.org/zh-hant/面向对象程序设计">物件導向</a>基礎。</li>
+<li>知道關聯式資料庫是什麼東西。不需要你會什麼很厲害的 SQL，但至少要知道裡面資料怎麼存的。</li>
+<li>懂<a href="http://pydoing.blogspot.tw/2012/01/html-5-syntax.html">基本的 HTML</a>。</li>
+<li>會一點點 Python——至少看完<a href="http://pydoing.blogspot.tw/2012/10/python-tutorial.html">這個系列</a>的基礎篇。</li>
+<li>最好在看的同時開始<a href="http://zh-tw.learnlayout.com">惡補 CSS</a>，總是會用到。</li>
+</ul>
+<p>總之，這個教學會非常硬派，而且不繞遠路，直攻 best practice。我不會讓你有任何機會建立壞習慣。</p>
+<p>首先你可能需要安裝 Python。Django 2.0 起僅支援 Python 3.4 以上版本，所以請挑一個安裝。如果你已經裝好了，麻煩直接跳到下面。</p>
+<h2 id="安裝-python">安裝 Python</h2>
+<h3 id="windows">Windows</h3>
+<p>我建議用我自己做的 <a href="https://github.com/uranusjr/snafu/releases">SNAFU</a> 工具管理 Python。安裝方法很直覺：</p>
+<ul>
+<li>下載安裝檔（注意你是 32-bit 還是 64-bit）後執行</li>
+<li>打開一個 command prompt（我建議用 <a href="http://cmder.net">cmder</a>，不過內建的 <code>cmd.exe</code> 也能用）</li>
+<li><code>snafu install 3.6</code>（安裝目前最新的 Python 3.6；如果你看到這篇文章時有更新的，也可以改這個，後面有版本號的指令再改成對應值）</li>
+<li>等它跑完</li>
+</ul>
+<h3 id="macos">macOS</h3>
+<p>建議用 <a href="https://brew.sh/index_zh-tw.html">Homebrew</a>。安裝後執行 <code>brew install python3</code> 即可。</p>
+<h3 id="其他系統">其他系統</h3>
+<p>應該你自己更知道該怎麼裝⋯⋯吧？通常會有個不錯的套件管理系統可以用。</p>
+<h2 id="安裝專案環境管理工具-pipenv">安裝專案環境管理工具 Pipenv</h2>
+<p>除非你對 Django 只是玩玩而已，不然你應該會用它做超過一個網站。當你需要同時維護複數個網站時，就會遇到升級問題。當 Django 發新版本時，你也會想升級你網站使用的 Django 版本，以獲得最新的功能、更好的效能、以及更安全的修正。但如果你所有專案都共用一份 Django，那麼你要嘛是一次全升，要嘛就是要冒著有些網站可能壞掉的風險。為了解決這個問題，Python 提供了一個工具「虛擬環境」（virtual environment，簡稱 virtualenv 或 venv）。這個工具可以讓你把每個專案的 Python 環境分開，讓你可以分開處理它們的升級。[註 1]</p>
+<pre><code>pip3 install pipenv
+</code></pre>
+<blockquote>
+  <ul>
+  <li>如果你用 SNAFU 管理 Python，在這之後請執行 <code>snafu use 3.6</code> 讓 <code>pipenv</code> 指令能被使用。</li>
+  </ul>
+</blockquote>
+<p>Pipenv 的運作方法是，當你使用它安裝一個套件時，不會直接安裝到系統 Python 環境，而是建立一個<a href="https://docs.python-guide.org/en/latest/dev/virtualenvs/">虛擬環境</a>，把所有套件放到一個專案專用的位置。當我們為專案執行一個 Python 指令時，會使用 <code>pipenv run</code> 這個指令（例如 <code>pipenv run python</code> 執行 Python 直譯器）。Pipenv 會在執行這個指令時，同時設定相關的環境，使得每個專案可以有獨立、不互相干擾的環境。有興趣的人可以看看 <a href="https://docs.pipenv.org">Pipenv 的文件</a>。</p>
+<h2 id="開始開發">開始開發</h2>
+<p>首先來為我們的專案建立一個目錄。</p>
+<pre><code>mkdir lunch
+cd lunch
+</code></pre>
+<p>我好像還沒解釋我們要做什麼專案。這會是一個決定今天午餐要吃什麼系統，包含一個可以讓使用者註冊、登入、增加新店家的介面，以及一個新增投票決定要吃什麼的介面。預計是這樣，如果之後有想到什麼可能會再加。</p>
+<p>接著為這個專案安裝 Django：</p>
+<pre><code>pipenv install django~=2.0
+</code></pre>
+<p>Django 從 2.0 開始使用類似 sematic versioning 的版本模式，所以我們使用 <code>~=</code> 安裝「2.0 系列，API 相容」的版本。</p>
+<p>這樣就設定完成啦。明天終於要寫程式了嗎？還沒。我們要先來聊聊 Django 究竟是怎麼運作的。</p>
+<hr />
+<p>註 1：只有 Python 環境可以被分開。如果你的專案有用到系統函式庫以及其他語言（例如 C）函式庫，那麼還是會有問題。不過幸好其他語言有其他語言的玩法，例如 Windows 的 manifest 或 Linux 的函式庫命名規則等等。總之 Python 虛擬環境不處理這些。</p>
+
+        </div>
+            </body>
+      <script src="common.js"></script>
+    </html>

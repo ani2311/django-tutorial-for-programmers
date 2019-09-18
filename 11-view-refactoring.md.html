@@ -1,0 +1,121 @@
+
+    <html>
+      <head>
+        <title>Chapter11</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>有了昨天的基礎，我們現在要開始重構。先從簡單的開始。</p>
+<h2 id="首頁">首頁</h2>
+<p>仔細想想，首頁好像不是 <code>stores</code> 的一部份。我們應該把它移出來。我個人的習慣是為這些不知道要去哪裡的 views 建一個專屬的 app：</p>
+<pre><code>python manage.py startapp pages
+</code></pre>
+<p>把它加入 <code>INSTALLED_APPS</code>：</p>
+<pre><code class="python language-python">INSTALLED_APPS = [
+    'pages',
+    # ...
+]
+</code></pre>
+<p>接著把 <code>home</code> 從 <code>stores/views.py</code> 移到 <code>pages/views.py</code>，並修改 <code>lunch/urls.py</code>：</p>
+<pre><code class="python language-python">from pages.views import home    # 原本的 import 刪掉
+
+# ...
+url(r'^$', home, name='home'),
+# ...
+</code></pre>
+<p>既然 view 搬家了，template 好像也應該一起才對。在 <code>pages</code> 裡面建立 <code>templates</code> 目錄，然後把 <code>home.html</code> 搬進去。</p>
+<p>測試也一樣應該進去。把 <code>HomeViewTests</code> 從 <code>stores/tests.py</code> 移到 <code>pages/tests.py</code>。跑一下 <code>python manage.py test</code>，確認東西沒有壞掉。</p>
+<p>不過等等，為什麼 template 搬家了，Django 卻還是找得到？這裡需要解釋一下 Django 的 template lookup。當你在 view（或其他地方）指定一個 template 名稱時，Django 預設會：</p>
+<ol>
+<li>根據 <code>TEMPLATE_DIRS</code> 設定值，在指定的目錄中尋找名稱符合者。（這個設定的預設值是空 tuple，所以 Django 預設會跳過這個步驟。）</li>
+<li>在每個 app 中尋找 <code>templates</code> 目錄，並根據 <code>INSTALLED_APPS</code> 順序尋找名稱符合者。</li>
+</ol>
+<p>以這裡的狀況，Django 會依序檢查 <code>pages</code>、<code>stores</code>、以及所有列出的 Django 內建 apps 中的 <code>templates</code> 目錄，尋找 <code>home.html</code>。所以不論你把這個檔案放在任一個 app 中，Django 都找得到。<strong>如果你在 <code>pages</code> 和 <code>stores</code> 同時有 <code>home.html</code>，Django 會優先使用 <code>pages</code> 裡的版本</strong>（因為 <code>pages</code> 被列在 <code>stores</code> 前面）。</p>
+<p>為了避免 template 名稱與其他 apps 中的檔案衝突，而不小心被覆蓋，我們通常會在 <code>templates</code> 目錄中使用子目錄，達到類似 namespacing 的效果。</p>
+<p>所以我們來把 <code>home.html</code> 移到更好的地方。在 <code>pages/templates</code> 裡新增 <code>pages</code> 子目錄，然後把 <code>home.html</code> 移進去。</p>
+<p>現在你的專案目錄應該會像這樣：</p>
+<pre><code>lunch
+├── lunch
+│&amp;nbsp;&amp;nbsp; └── (省略)
+├── stores
+│&amp;nbsp;&amp;nbsp; ├── templates
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; ├── store_detail.html
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; └── store_list.html
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── admin.py
+│&amp;nbsp;&amp;nbsp; ├── models.py
+│&amp;nbsp;&amp;nbsp; ├── tests.py
+│&amp;nbsp;&amp;nbsp; └── views.py
+├── pages
+│&amp;nbsp;&amp;nbsp; ├── templates
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; └── pages
+│&amp;nbsp;&amp;nbsp; │       └── home.html
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── admin.py
+│&amp;nbsp;&amp;nbsp; ├── models.py
+│&amp;nbsp;&amp;nbsp; ├── tests.py
+│&amp;nbsp;&amp;nbsp; └── views.py
+└── manage.py
+</code></pre>
+<p>當然，改了 template 位置代表我們要修改 <code>home</code> view：</p>
+<pre><code class="python language-python">def home(request):
+    return render(request, 'pages/home.html')
+</code></pre>
+<p>記得測試裡的路徑也要修改。重新跑一次 <code>python manage.py test</code>，確認東西沒有壞！</p>
+<h2 id="store-urls">Store URLs</h2>
+<p>現在可能還好，但是如果你的網站慢慢增長，URL patterns 越來越多，你的 <code>urls.py</code> 就會開始越長越大，也越來越難維護。更麻煩的是，因為 Django 是依照順序逐項比對 URL，所以如果你有太多路徑，後面的項目比對起來就會非常慢。所以我們通常會把 URL 分類，只在最頂層（<code>lunch/urls.py</code>）留下最常用也最簡單的 patterns，降低 Django 比對時需要的運算量。</p>
+<p>把 <code>lunch/urls.py</code> 裡關於 <code>stores</code> 的兩組 URL patterns 刪掉，換成下面的內容：</p>
+<pre><code class="python language-python">url(r'^store/', include('stores.urls')),
+</code></pre>
+<p>這代表「如果網址以 <code>store/</code> 開頭（注意 pattern 後面沒有 <code>$</code>），嘗試從 <code>stores.urls</code> 尋找符合項目」。</p>
+<p>接著在 <code>stores</code> 裡新增一個檔案 <code>urls.py</code>，內容如下：</p>
+<pre><code class="python language-python">from django.conf.urls import url
+from . import views
+
+urlpatterns = [
+    url(r'^$', views.store_list, name='store_list'),
+    url(r'^(?P&lt;pk&gt;\d+)/$', views.store_detail, name='store_detail'),
+]
+</code></pre>
+<p>因為路徑前面的 <code>store/</code> 部分已經被比對掉了，這裡只檢查路徑的後半段。測試所有路徑都沒有壞掉！我們今天大概完成了一半；因為內容有點長，好像得分成兩天寫。明天仍然是重構。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

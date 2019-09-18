@@ -1,0 +1,86 @@
+
+    <html>
+      <head>
+        <title>Chapter03</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>希望你還記得我們前天做了什麼。</p>
+<p>首先，找到你之前建立的 <code>lunch</code> 目錄，<code>cd</code> 進去，然後啟用虛擬環境。</p>
+<p>接著用以下的指令建立新專案</p>
+<pre><code>pipenv run django-admin startproject lunch .
+</code></pre>
+<p>這會在目前的目錄下建立所有專案需要的檔案。</p>
+<p>你現在的檔案結構應該會類似這樣：</p>
+<pre><code>lunch
+├── lunch
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── settings.py
+│&amp;nbsp;&amp;nbsp; ├── urls.py
+│&amp;nbsp;&amp;nbsp; └── wsgi.py
+├── manage.py
+├── Pipfile
+└── Pipfile.lock
+</code></pre>
+<p>根目錄裡有一個檔案 <code>manage.py</code>，以及一個與專案同名的目錄。前者的用途看名字大概也能猜到，是用來管理你的專案；我們之後用到的時候再來慢慢解釋。後者則是用來存放專案共用的檔案。我們來看看裡面各檔案的作用：</p>
+<ul>
+<li><p><code>__init__.py</code>：Python 用來標示某個目錄是 module 的檔案。<code>lunch</code> 裡面有這個檔案，就代表 <code>lunch</code> 本身是個合法的 Python module，其他程式可以用 <code>import</code> 把它載入。</p></li>
+<li><p><code>settings.py</code>：顧名思義，這個檔案是用來存放 <code>lunch</code> 這個專案的設定。Django 的設定檔其實就是一個 Python 檔，裡面的變數會被當作設定值。</p>
+<p>除了你現在在 <code>settings.py</code> 裡看得到的內容外，Django 其實還有很多預設值。完整的 Django 設定列表可以在<a href="https://docs.djangoproject.com/en/2.0/ref/settings/">官網文件</a>找到；如果某個設定值在設定檔裡沒有，則會使用內建的預設值。</p>
+<p>Django 在很多地方都提供了合理的預設值，所以在設定檔裡需要修改的項目並不多。我們之後會回來處理必要的設定。</p></li>
+<li><p><code>urls.py</code>：當伺服器收到網路要求時，要求裡面會有一個路徑資訊，也就是你在使用瀏覽器時看到的那個網址。這個檔案的內容是用來告訴 Django，當它收到某個（或某些）路徑的要求時，應該要呼叫哪個函式來處理。我們之後會再回來詳細討論路徑，以及 Django 怎麼把它對應到函式。</p></li>
+<li><p><code>wsgi.py</code>：如果你還記得昨天的內容，應該可以猜到它的作用。這個檔案就是讓你的 Django 專案變成 WSGI 應用程式的關鍵。當 WSGI 伺服器收到請求時，就會執行這個檔案，以獲得一個 WSGI 應用程式。</p></li>
+</ul>
+<p>我們來看看 <code>wsgi.py</code> 的內容：</p>
+<pre><code class="python language-python">import os
+
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lunch.settings")
+
+application = get_wsgi_application()
+</code></pre>
+<p>檔案前面有一串 docstring，用來解釋這個檔案的用途，這裡省略。這個檔案分成兩個部分。上面兩行是用來指定專案設定檔位置。在預設狀況下，我們的檔案是放在 <code>lunch</code> module 裡面的 <code>settings.py</code>，所以這邊設定成 <code>lunch.settings</code>。</p>
+<p>這個設定檔路徑用 <code>os.environ</code> 被設定到環境變數 <code>DJANGO_SETTINGS_MODULE</code> 裡。接著 Django 導入一個 WSGI application，並執行它。當這個 WSGI 應用被執行時，會讀取我們剛剛設定的 <code>DJANGO_SETTINGS_MODULE</code> 環境變數，並依此找到設定檔來使用。這也代表，如果我們<strong>不想</strong>使用 <code>lunch.settings</code> 當我們的設定檔，只要把環境變數設成其他值就可以了！請記住這個概念，我們之後會用到。</p>
+<p>不過今天先到這裡。我們明天會把專案設定完成，讓它可以執行。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

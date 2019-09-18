@@ -1,0 +1,225 @@
+
+    <html>
+      <head>
+        <title>Chapter22</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>其實這個內容跟本應該放在更前面，只是我<strong>忘記了</strong>，所以只好現在補講。昨天我們說要做讓使用者修改點餐的功能，就先延到明天。</p>
+<p>我們現在可以在 admin 新增修改店家與菜單內容，但是在一般頁面中只能新增修改店家，不能修改菜單（雖然已經加入的會被列出）。我們可以像店家的表單一樣，把它獨立成一個 model form，但是這種做法有個問題：一次只能新增一個項目。要怎麼像 Django Admin 那樣，有個表格可以一次建立很多個項目？</p>
+<p>答案就是 formsets。事實上 admin 裡的那個表格就是用它做的！顧名思義，一個 formset 就是「很多表單的集合體」。這有很多用途，例如一次讓使用者上傳很多圖片，或者更常見的，是用來處理一對多關係中的多個項目。</p>
+<p>在這裡，我們想要建立指向某個 <code>Store</code> object 的 <code>MenuItem</code> model instances。所以我們可以使用內建的 factory method：</p>
+<pre><code class="python language-python"># stores/views.py
+
+from django.forms.models import inlineformset_factory
+from .models import MenuItem
+
+def store_update(request, pk):
+    # ...
+    MenuItemFormSet = inlineformset_factory(
+        parent_model=Store, model=MenuItem, fields=('name', 'price',), extra=1,
+    )
+    menu_item_formset = MenuItemFormSet(instance=store)
+    return render(request, 'stores/store_update.html', {
+        'form': form, 'store': store, 'menu_item_formset': menu_item_formset,
+    })
+</code></pre>
+<p>之前已經看過 <code>modelform_factory</code>，這裡的用法類似，只是我們需要多指定一個 <code>parent_model</code> 參數，Django 才知道要用哪一個 foreign key 建立一對多關聯。[註 1] 在 <code>instance</code> 指定 foreign key 指向的 parent instance，Django 就會自動幫你把關聯的物件預先取出，並根據 <code>extra</code> 的數值增加空白欄位。</p>
+<p>在 template 中顯示這個 formset：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_update.html #}
+
+{# ... #}
+
+{% crispy form %}
+{% crispy menu_item_formset %}   &lt;!-- 新增這一行 --&gt;
+</code></pre>
+<p>選一個店家，按「更新店家資訊」進去，應該會看到下面多出了可以填入菜單的欄位！不過這些欄位還沒有作用，因為它們沒有在 form tag 裡面，我們也還沒在 post method 實作儲存。</p>
+<p>首先為 menu item formset 實作一個 helper，把我們不需要的東西清掉：</p>
+<pre><code class="python language-python"># stores/forms.py
+
+from django.forms.models import inlineformset_factory
+from .models import MenuItem
+
+BaseMenuItemFormSet = inlineformset_factory(
+    parent_model=Store, model=MenuItem, fields=('name', 'price',), extra=1,
+)
+
+class MenuItemFormSet(BaseMenuItemFormSet):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False        # 我們要自己包。
+        self.helper.disable_csrf = True     # StoreForm 已經有 CSRF token，不需要重複產生。
+</code></pre>
+<p>把 <code>store_update</code> 改成下面這樣：</p>
+<pre><code class="python language-python">from .forms import MenuItemFormSet
+
+def store_update(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+
+    if request.method == 'POST':
+        form = StoreForm(request.POST, instance=store, submit_title='更新')
+
+        # 用 post data 建立 formset，並在其（與 store form）合法時儲存。
+        menu_item_formset = MenuItemFormSet(request.POST, instance=store)
+        if form.is_valid() and menu_item_formset.is_valid():
+            store = form.save()
+            menu_item_formset.save()
+            return redirect(store.get_absolute_url())
+    else:
+        # 移除 submit button 與 form tag。
+        form = StoreForm(instance=store, submit_title=None)
+        form.helper.form_tag = False
+
+        menu_item_formset = MenuItemFormSet(instance=store)
+
+    return render(request, 'stores/store_update.html', {
+        'form': form, 'store': store, 'menu_item_formset': menu_item_formset,
+    })
+</code></pre>
+<p>注意有註解的段落。接著在 template 中手動加上 form tag 與 submit button：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_update.html #}
+
+{# 替換 content block 的內容 #}
+&lt;form method="post"&gt;
+  {% crispy form %}
+  {% crispy menu_item_formset %}
+  &lt;button type="submit" class="btn btn-primary"&gt;更新&lt;/button&gt;
+&lt;/form&gt;
+</code></pre>
+<p>這樣結構就正確了！新增刪除幾個項目看看吧。</p>
+<p>接著我們要實作 admin 裡面新增欄位的功能。在實作之前，我們必須先了解 formset 的運作原理。每個 formset 其實都分為兩個部分：</p>
+<ol>
+<li>Management form，裡面包含四個欄位：<ul>
+<li>Total forms，代表目前 formset 中有幾個 forms。</li>
+<li>Initial forms，代表「一開始」有幾個 forms。</li>
+<li>Minimum 與 maximum forms，代表最多與最少可以有幾個 forms。這可以在建立 formset 時指定，但我們這裡不管，就用預設值（最少 0 個，最多可以有數千個，應該夠用）。</li></ul></li>
+<li>Form 列表，包括原本已經存在的項目，以及 <code>extra</code> 參數指定的額外空白項目。表單數量會和 initial forms 的值相等。</li>
+</ol>
+<p>所以我們可以這樣實作新增欄位按鈕：</p>
+<ol>
+<li>按下按鈕時，clone 一個 formset 中的 form。</li>
+<li>修改 form 中的 ID 與標籤，讓它能被 Django 識別。</li>
+<li>修改 total forms 參數，讓 Django 知道欄位數量有變。</li>
+</ol>
+<p>這個動作的主要用意是讓我們可以自訂 menu item form 的格式；我們需要用一個 <code>div</code> 把每個單獨的 form 包起來，並為它加上 CSS class。</p>
+<p>修改 <code>store_update.html</code>：</p>
+<pre><code class="html language-html">&lt;!-- 引入 "static" tag --&gt;
+{% load staticfiles %}
+
+&lt;!-- 替換原本的 content block --&gt;
+{% block content %}
+&lt;form method="post"&gt;
+  {% crispy form %}
+
+  &lt;!-- 手動一個一個產生 formset 中的 forms，並在它們外面包一層 div --&gt;
+  {{ menu_item_formset.management_form }}
+  {% for form in menu_item_formset %}
+    &lt;div class="menu-item form-group"&gt;
+      {% crispy form menu_item_formset.helper %}
+    &lt;/div&gt;
+  {% endfor %}
+
+  &lt;!-- 增加這行 --&gt;
+  &lt;a href="#" class="menu-item-add btn btn-default"&gt;新增菜單項目&lt;/a&gt;
+  &lt;button type="submit" class="btn btn-primary"&gt;更新&lt;/button&gt;
+&lt;/form&gt;
+{% endblock content %}
+
+&lt;!-- 加上這個 block --&gt;
+{% block js %}
+{{ block.super }}
+&lt;script src="{% static 'stores/js/store_update.js' %}"&gt;&lt;/script&gt;
+{% endblock js %}
+</code></pre>
+<p>這裡注意到 <code>crispy</code> tag 其實可以接受第二個參數，動態在 template 中指定要用的 form helper。我們這裡讓所有 formset 中的 forms 都沿用 formset 的 helper。</p>
+<p>最後建立 <code>stores/static/stores/js/store_update.js</code>，實作新增欄位：</p>
+<pre><code class="javascript language-javascript">(function ($) {
+
+$('.menu-item-add').click(function (e) {
+  e.preventDefault();
+
+  var lastElement = $('.menu-item:last');
+  var totalForms = $('#id_menu_items-TOTAL_FORMS');
+  var total = parseInt(totalForms.val());
+
+  var newElement = lastElement.clone(true);
+  newElement.find(':input').each(function() {
+    var name = $(this).attr('name').replace(
+      '-' + (total - 1) + '-',
+      '-' + total + '-'
+    );
+    $(this).attr({'name': name}).val('').removeAttr('checked');
+  });
+  newElement.find('label').each(function() {
+    $(this).attr('for', $(this).attr('for').replace(
+      '-' + (total - 1) + '-',
+      '-' + total + '-'
+    ));
+  });
+  newElement.find('*').each(function() {
+    var id = $(this).attr('id');
+    if (id) {
+      $(this).attr('id', id.replace(
+        '-' + (total - 1) + '-',
+        '-' + total + '-'
+      ));
+    }
+  });
+
+  totalForms.val(total + 1);
+  newElement.insertAfter(lastElement);
+});
+
+})(jQuery);
+</code></pre>
+<p>這段 JavaScript 會找到 formset 中的最後一個項目（所以我們前面要用 div 把每個 form 包起來，這裡才能方便使用）clone 一份，修改其中欄位的 ID 與 name，把原本的值清除，把它 insert 到最後面，再修改 total forms 欄位值。這看起來實在非常麻煩，幸好除非你對 form 做了什麼奇怪的事情，否則這個 script 基本上可以一直沿用下去，只要修改 <code>lastElement</code> 與 <code>totalForms</code> 的 selector 就好了。[註 2]</p>
+<p>重新整理看看！「更新」旁邊應該會多一個「新增」按鈕，可以用來動態新增欄位。</p>
+<p>終於完成了！下週我們會回到正常進度。</p>
+<hr />
+<p>註 1：你或許會問，如果有不止一個 foreign key 指向同一個 model，Django 要怎麼知道應該使用哪一個？為了避免這種狀況，其實 <code>inlineformset_factory</code> 可以接受一個叫 <code>fk_name</code> 的參數，讓你指定欄位名稱。但在這裡 <code>MenuItem</code> 只有一個 foreign key 指向 <code>Store</code>，所以不需要指定這個參數，Django 會自動偵測。</p>
+<p>註 2：如果你仔細看產生的 HTML，會發現我們沒有改到所有元件的 IDs，只改了 input 欄位。這樣就足夠讓 Django 正確反應，不過如果你有 CSS 或 JavaScript 需求，必須讓所有的元件都被正確修改，或許用 JavaScript template engine（Mustache、Underscore.js 的範本、或者 Handlebars 等等）來產生會是更好的選擇。不過這就超出這個教學的範圍了。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

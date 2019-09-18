@@ -1,0 +1,118 @@
+
+    <html>
+      <head>
+        <title>Chapter06</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>來幫網站加個首頁。因為這是 Django 教學，不是前端教學，所以這個範例會直接拼一個簡單的介面。我最近很愛 <a href="https://bulma.io">Bulma</a>，所以就趁這個機會用用看。Django 本身不管前端，所以只要 Django 的部分做好，其他完全可以直接抽換，舉一反三應該不難。</p>
+<p>當 Django 收到一個 HTTP request 時，會首先確認該 request 的 URI 應該對應到哪個 view（如果對應不到，直接回傳 <a href="http://zh.wikipedia.org/zh-hant/HTTP_404">404 Not Found</a>），並把 request 交給它。View 要負責處理這個 request，並回傳一個 HTTP response：</p>
+<pre><code>           ┌──────────────┐
+ request   │              │  response
+─────────&gt; │     view     │ ──────────&gt;
+           │              │
+           └──────────────┘
+</code></pre>
+<p>這顯然是一個 <a href="http://sco.wikipedia.org/wiki/Function_(mathematics)">function</a>！所以在 Django 中，每個 view 其實就是一個 function。這個 function 接受一個 request 引數（與其他參數，我們之後會提到），回傳一個 <code>django.http.HttpResponse</code> 物件。由於 HTTP response 格式需要設定很多東西，所以 Django 提供了一個 shortcut <code>django.shortcuts.render</code> 來方便我們產出 response 物件。</p>
+<p>所以我們來實作 <code>home</code> 這個 view。首先我們要在 <code>lunch/urls.py</code> 新增一個 URL pattern，讓 Django 知道如何把網址導向至 view 的 function：</p>
+<pre><code class="python language-python">from django.contrib import admin
+from django.urls import path
+from stores.views import home
+
+urlpatterns = [
+    path('', home),
+    path('admin/', admin.site.urls),
+]
+</code></pre>
+<p>這個 <code>path</code> 會符合首頁，也就是 URL 中路徑是空字串的狀況，並把它對應到 <code>home</code>。</p>
+<p>接著我們實際實作 <code>home</code> function：</p>
+<pre><code class="python language-python">from django.shortcuts import render
+
+def home(request):
+    return render(request, 'home.html')
+</code></pre>
+<p><code>render</code> 的第二個參數是 template 的位置（我們稍後會看到怎麼建立它）。<code>render</code> 會負責處理 template，產生一個合法的 HTML 檔案，並依此建立 HTTP response。</p>
+<p>最後是 <code>home.html</code>。在 <code>stores</code> 裡建立一個目錄，叫做 <code>templates</code>，並在裡面新增 <code>home.html</code>：</p>
+<pre><code class="html language-html">{# stores/templates/home.html #}
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;meta charset="utf-8"&gt;
+&lt;title&gt;午餐系統&lt;/title&gt;
+&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.min.css" integrity="sha256-v5YlJGWVLS5hQ+o48fBzCKHEP2vMNsku57x3CosYykc=" crossorigin="anonymous" /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;nav class="navbar is-dark" role="navigation" aria-label="main navigation"&gt;
+    &lt;div class="container"&gt;
+        &lt;div class="navbar-brand"&gt;
+            &lt;span class="navbar-item"&gt;午餐系統&lt;/span&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/nav&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>可以看到，這基本上就是一個 HTML 檔案。<code>render</code> 會讀取這個檔案，並以它作為 content，建立 HTTP response。</p>
+<p>把 server 跑起來，然後打開 <a href="http://localhost:8000/">http://localhost:8000/</a> 看看。內容應該不再是 <strong>It works!</strong> 了，而是你剛剛放的 navbar。恭喜你完成了第一個 Django 頁面！</p>
+<p>上面的 HTML 有一個小問題。我們沒有放<strong>午餐系統</strong>的連結。這個區塊應該要指向首頁，所以我們可以這樣寫：</p>
+<pre><code class="html language-html">&lt;a class="navbar-item" href="/"&gt;午餐系統&lt;/a&gt;
+</code></pre>
+<p>但這不好。Django 不鼓勵你把 URL 直接寫死，因為如果你的網站之後要修改架構，更換所有的 URL 會很痛苦。我們真正想做的，其實不是讓它指向 <code>/</code>，而是指向 <code>stores.views.home</code> 對應的那個 URL，<strong>不管它是什麼</strong>。所以我們應該這麼做：</p>
+<ol>
+<li><p>幫我們的 URL 加上一個名稱。</p>
+<p>把 <code>lunch/urls.py</code> 中 <code>home</code> 的那行修改成下面這樣：</p>
+<pre><code class="python language-python">path('', home, name='home'),
+</code></pre></li>
+<li><p>用這個 name 來 refer 我們要的 URL：</p>
+<pre><code class="html language-html">&lt;a class="navbar-item" href="{% url 'home' %}"&gt;午餐系統&lt;/a&gt;
+</code></pre></li>
+</ol>
+<p>等等！<code>{% url 'home' %}</code> 是什麼？</p>
+<p>這叫 template tag。我們不能在 template 中寫 Python，所以如果你需要在 template 中使用任何邏輯（JavaScript 不算），就必須使用 template tags。</p>
+<p>Django 的 template tag 語法是下面這樣：</p>
+<pre><code>{% tag_name [ argument ... ] %}
+</code></pre>
+<p>所以上面那個例子中，我們呼叫了 <code>url</code> 這個 tag，並傳入一個參數 <code>'home'</code>。這個 tag 會幫你找到名稱為 <code>home</code>  的 URL pattern（名稱就是 <code>urls.py</code> 裡的 <code>name='home'</code> ），並輸出該 pattern 對應的網址。在這裡，輸出的就會是 <code>/</code>。</p>
+<p>這就是你的第一個 Django view。接著我們要實際建立資料，把下面的內容也做出來。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

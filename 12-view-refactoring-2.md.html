@@ -1,0 +1,215 @@
+
+    <html>
+      <head>
+        <title>Chapter12</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>延續昨天的內容，我們繼續重構；今天的重點會放在 <code>stores</code> app。</p>
+<h2 id="get_absolute_url"><code>get_absolute_url</code></h2>
+<p>在 <code>stores/store_list.html</code> 中，我們用了一個 <code>url</code> tag 來得到某個店家的內容頁網址。但這個網址基本上和店家是一對一關聯，而且永遠和店家本身綁定。所以這個邏輯似乎應該被放到 model class，而不是 template——這樣如果哪天我們想把店家頁面換到其他地方，就不需要修改所有的 <code>url</code> tag。</p>
+<p>在 <code>stores/models.py</code> 新增以下內容：</p>
+<pre><code class="python language-python">from django.core.urlresolvers import reverse
+</code></pre>
+<p>然後為 <code>Store</code> model 加上一個 method <code>get_absolute_url</code>，讓它變成下面這樣：</p>
+<pre><code class="python language-python">class Store(models.Model):
+
+    name = models.CharField(max_length=20)
+    notes = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('store_detail', kwargs={'pk': self.pk})
+</code></pre>
+<p><code>reverse</code> 的用途與 <code>url</code> tag 相同，但 capture groups 的值是使用 <code>kwargs</code> 參數傳入。Method 名稱沒有規定，<code>get_absolute_url</code> 只是 Django 社群的習慣。</p>
+<p>打開 <code>stores/templates/store_list.html</code>，把 <code>&lt;h2&gt;</code> 那行改成這樣：</p>
+<pre><code class="html language-html">&lt;h2&gt;&lt;a href="{{ store.get_absolute_url }}"&gt;{{ store.name }}&lt;/a&gt;&lt;/h2&gt;
+</code></pre>
+<p>記得，在 template 中呼叫 function 與 method 時不需要加後面的括弧！</p>
+<h2 id="store-templates">Store Templates</h2>
+<p>來把 <code>stores</code> 的 templates 放到子目錄內。在 <code>stores/templates</code> 裡建立 <code>stores</code>，把 <code>store_list.html</code> 與 <code>store_detail.html</code> 丟進去，然後修改 <code>store/views.py</code>，以指向正確的 template 路徑：</p>
+<pre><code class="python language-python">def store_list(request):
+    # ...
+    return render(request, 'stores/store_list.html', {'stores': stores})
+
+def store_detail(request, pk):
+    # ...
+    return render(request, 'stores/store_detail.html', {'store': store})
+</code></pre>
+<p>你可能會疑惑，既然都放在 <code>stores</code> 裡面了，為什麼名稱還要有 <code>store</code>。呃⋯⋯一個解釋是，因為 app 裡面可以有超過一個 model。我們的 <code>stores</code> app 中有 <code>Store</code> 與 <code>MenuItem</code>，所以你可能會有 <code>stores/menuitem_list.html</code> 與 <code>stores/menuitem_detail.html</code>。實務上你當然可以把 <code>store</code> 省掉，不過 Django 習慣上會保留。</p>
+<p>總之，再跑跑測試，應該還是要正常。目前的專案結構：</p>
+<pre><code>lunch
+├── lunch
+│&amp;nbsp;&amp;nbsp; └── (省略)
+├── stores
+│&amp;nbsp;&amp;nbsp; ├── templates
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp; └── stores
+│   │&amp;nbsp;&amp;nbsp;  &amp;nbsp;&amp;nbsp; ├── store_detail.html
+│&amp;nbsp;&amp;nbsp; │&amp;nbsp;&amp;nbsp;     └── store_list.html
+│&amp;nbsp;&amp;nbsp; ├── __init__.py
+│&amp;nbsp;&amp;nbsp; ├── admin.py
+│&amp;nbsp;&amp;nbsp; ├── models.py
+│&amp;nbsp;&amp;nbsp; ├── tests.py
+│&amp;nbsp;&amp;nbsp; └── views.py
+├── pages
+│&amp;nbsp;&amp;nbsp; └── (省略)
+└── manage.py
+</code></pre>
+<p>你可以能已經注意到，我們的三個 templates 中有非常多重複的東西。至少 navbar 整個都重複啦！這樣實在不好，如果哪天我們要改 navbar 內容，肯定會忘記什麼東西。在 Django 中，通常會使用 template inheritance 解決這個問題。</p>
+<p>Template inheritance 和一般 OOP 的繼承差不多。如果我們把 template 想成普通的類別，就會想出類似這樣的繼承鏈：</p>
+<p><img src="assets/template_inheritance.png" alt="" /></p>
+<p>你可能會想把好像沒什麼用的 base classes（例如 <code>Page</code>）拿掉。其實也是可以啦，不過如果你有很多很多頁面時，或許就會想要它們。畢竟是教學，就把它們建出來吧。</p>
+<p>首先是 <code>base.html</code>。這建在哪都可以，不過我的習慣是另外創一個 app 來放：</p>
+<pre><code>python manage.py startapp base
+</code></pre>
+<p>然後建立 <code>base/templates/base.html</code>：</p>
+<pre><code class="html language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;{% block title %}午餐系統{% endblock title %}&lt;/title&gt;
+&lt;link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+{% block body %}
+&lt;nav class="navbar navbar-default navbar-static-top" role="navigation"&gt;
+  &lt;div class="container"&gt;
+    &lt;div class="navbar-header"&gt;
+      &lt;a class="navbar-brand" href="{% url 'home' %}"&gt;午餐系統&lt;/a&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;
+{% endblock body %}
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>我們把應該要共用的 Bootstrap CDN link 與 navbar 放在 base class (template)。Block-endblock tag 是 Django 用來標注某個區塊可以被 override 的語法。</p>
+<p>記得把 <code>base</code> 加入 <code>INSTALLED_APPS</code>：</p>
+<pre><code class="python language-python">INSTALLED_APPS = [
+    'pages',
+    'stores',
+    'base',
+    # ...
+]
+</code></pre>
+<p>因為 <code>base</code> 是上面兩個 apps 的基礎，所以我習慣放在下面。</p>
+<p>接著在 <code>pages/templates/pages</code> 裡也建立一個 <code>base.html</code>，用來代表上面的 <code>Page</code> class：</p>
+<pre><code class="html language-html">{% extends 'base.html' %}
+</code></pre>
+<p>Extend tag 是用來表示我們要繼承 <code>base.html</code>。因為我們不需要複寫什麼東西，所以這麼一行就夠了。</p>
+<p>接著是 <code>pages/templates/pages/home.html</code>：</p>
+<pre><code class="html language-html">{% extends 'pages/base.html' %}
+
+{% block body %}
+{{ block.super }}
+{% endblock body %}
+</code></pre>
+<p>我們可以用 block-endblock 語法，來指定複寫 parent class (template) 的某個區塊。<code>block.super</code> 是一個特殊值，代表「請把原本的 block 內容放在這裡」，大致上就和 OOP 呼叫 super 函式的概念一樣。</p>
+<p>再來 <code>stores/templates/stores/base.html</code>：（新增檔案）</p>
+<pre><code class="html language-html">{% extends 'base.html' %}
+
+{% block body %}
+{{ block.super }}
+&lt;div class="container"&gt;{% block content %}{% endblock content %}&lt;/div&gt;
+{% endblock body %}
+</code></pre>
+<p>可以看到，block 裡面可以再有 block。因為我們的店家資訊都會包在 container 裡，所以之後可以寫在 content block 裡。</p>
+<p>剩下的就一次出清：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_list.html #}
+
+{% extends 'stores/base.html' %}
+
+{% block title %}店家列表 | {{ block.super }}{% endblock title %}
+
+{% block content %}
+{% for store in stores %}
+&lt;div class="store"&gt;
+  &lt;h2&gt;&lt;a href="{{ store.get_absolute_url }}"&gt;{{ store.name }}&lt;/a&gt;&lt;/h2&gt;
+  &lt;p&gt;{{ store.notes }}&lt;/p&gt;
+&lt;/div&gt;
+{% endfor %}
+{% endblock content %}
+</code></pre>
+<pre><code class="html language-html">{# stores/templates/stores/store_detail.html #}
+
+{% extends 'stores/base.html' %}
+
+{% block title %}{{ store.name }} | {{ block.super }}{% endblock title %}
+
+{% block content %}
+&lt;h1&gt;{{ store.name }}&lt;/h1&gt;
+&lt;p&gt;{{ store.notes }}&lt;/p&gt;
+&lt;table class="table"&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;&lt;th&gt;品項&lt;/th&gt;&lt;th&gt;單價&lt;/th&gt;&lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    {% for item in store.menu_items.all %}
+    &lt;tr&gt;&lt;td&gt;{{ item.name }}&lt;/td&gt;&lt;td&gt;{{ item.price }}&lt;/td&gt;&lt;/tr&gt;
+    {% endfor %}
+  &lt;/tbody&gt;
+&lt;/table&gt;
+{% endblock content %}
+</code></pre>
+<p>經過前面的解釋，應該不難理解了。再跑一次測試！如果你上面都沒做錯，應該還是會成功。雖然我們把東西大搬風了一陣，但該出現的還是都應該出現，只是改用繼承，而不是直接寫死。我們來把店家列表連結放到 navbar，證明所有頁面都會跟著改變：</p>
+<pre><code class="html language-html">{# base/templates/base.html #}
+
+&lt;!-- 取代 nav 元件 --&gt;
+&lt;nav class="navbar navbar-default navbar-static-top" role="navigation"&gt;
+  &lt;div class="container"&gt;
+    &lt;div class="navbar-header"&gt;
+      &lt;a class="navbar-brand" href="{% url 'home' %}"&gt;午餐系統&lt;/a&gt;
+    &lt;/div&gt;
+    &lt;div&gt;
+      &lt;ul class="nav navbar-nav"&gt;
+        &lt;li&gt;&lt;a href="{% url 'store_list' %}"&gt;店家列表&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;
+</code></pre>
+<p>有改變吧！</p>
+<p>大概就先到這裡。這次講的架構有些其實在小專案中根本是自找麻煩，所以如果你未來沒有特別需求，可以自由簡化這個架構。但多寫總比少寫好——如果你未來有需要，總是可以再回來看看！</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

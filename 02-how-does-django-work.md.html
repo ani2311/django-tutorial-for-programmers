@@ -1,0 +1,70 @@
+
+    <html>
+      <head>
+        <title>Chapter02</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>Django 是一個 web framework。前面的 <em>web</em> 代表它是用來做網路相關的，可是 <em>framework</em> 是什麼意思？我很喜歡一個忘了在哪裡看到的說法：[註 1]</p>
+<blockquote>
+  <p>Framework 是一個框架，幫你把程式的架構都建好，等你填你需要的邏輯進去。Framework 會負責在合適的時機呼叫你寫的程式，而不是讓你自行呼叫合適的函式，以搭建程式本身。</p>
+</blockquote>
+<p>也就是說，當你基於一個 framework 撰寫程式時，是 <strong>framework 用你的程式</strong>，在執行時達成目標；相對地，不使用 framework 時，則是<strong>你的程式使用某些函式</strong>（可能來自函式庫）來達成目標。</p>
+<p>好喔，那 Django 到底是怎麼<strong>用</strong>你的程式？這就要從 WSGI 開始說起。</p>
+<p>絕大多數用 Python 寫成的網路服務，在本質上都是一個 WSGI 應用程式。WSGI，亦即「web server gateway interface」，是一個<a href="http://legacy.python.org/dev/peps/pep-0333/">由 Python 官方制定</a>，用來統一伺服器程式與 Python 程式之間溝通方式的標準。</p>
+<p>如果你想多了解 WSGI，可以參考上面的官網連結，以及<a href="http://zh.wikipedia.org/wiki/Web服务器网关接口">維基百科條目</a>。如果你還沒興趣那麼深入，就繼續看下去吧。</p>
+<p>每個 WSGI 應用程式，都需要搭配一個 WSGI 伺服器來執行。當一個 WSGI 伺服器被啟動時，會進行以下的動作：</p>
+<ol>
+<li>初始化。<ol>
+<li>設定環境變數等執行參數。</li>
+<li>找到與它對應的 WSGI 應用程式。</li></ol></li>
+<li>進入一個迴圈，不斷等待來自網路的請求（requests）。</li>
+<li>當得到請求時，呼叫 WSGI 應用程式，並告知該請求內部的參數與資料。</li>
+<li>回到迴圈。</li>
+<li>重複 2—4，直到使用者或系統要求它停止。</li>
+</ol>
+<p>當你建立一個 Django 專案時，Django 會自動幫你產生一個 WSGI 應用程式。你寫的所有程式，都不會被直接使用，而是由那個 WSGI 程式在執行時，視需求自動 <code>import</code> 元件來使用。所以當你使用 Django 開發時，可能會覺得好像建立了一堆東西，但是它們都沒有被呼叫。沒什麼好擔心的，呼叫它們是 WSGI 應用程式的工作！</p>
+<p>現在你已經了解 Django 的運作原理，所以我們終於要開始寫程式了。不過今天就到這裡吧，明日待續。</p>
+<hr />
+<p>註 1：其實在很多狀況中，即使某個東西自稱 framework，也不一定就符合這個說法。因為太多人(?)自稱 framework，這個詞本身根本已經沒什麼意義了。但就 Django 而言，這個解釋還沒什麼太大問題。</p>
+
+        </div>
+             </body>
+      <script src="common.js"></script>
+    </html>

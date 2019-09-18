@@ -1,0 +1,199 @@
+
+    <html>
+      <head>
+        <title>Chapter09</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>我們現在要來自己寫個 view，把前面製作的 model 顯示出來。我們把這個 view 放在 <code>/stores/</code>，所以：</p>
+<pre><code class="python language-python"># lunch/urls.py
+
+from django.conf.urls import include, url
+from django.contrib import admin
+from stores.views import home, store_list              # 記得 import
+
+urlpatterns = [
+    url(r'^$', home, name='home'),
+    url(r'^store/$', store_list, name='store_list'),   # 新增這一行
+    url(r'^admin/', include(admin.site.urls)),
+]
+</code></pre>
+<p>接著是 <code>store_list</code> function。為了把店家列表顯示在這個頁面上，我們要使用 Django 的 ORM query。Django 的 ORM query 模式如下：</p>
+<ul>
+<li>Model class 的某些 attributes（預設是 <code>objects</code>）會回傳一個 model manager。</li>
+<li>Model manager 提供 query methods，回傳 query 物件——這是一個 <a href="https://docs.python.org/2/glossary.html#term-iterable">iterable</a>，所以你可以對它使用 index 與 iterator 介面。</li>
+<li>Query 物件同樣提供 query methods，可以產生新的 Query 物件。</li>
+<li>當你實際需要 <code>Query</code> 物件中包含的 model 物件時，Django 才會真正從資料庫把資料拿出來。</li>
+</ul>
+<p>以 <code>store_list</code> 而言，我們需要 <code>Store</code> 的全部資料。所以我們可以使用下面的語法：</p>
+<pre><code class="python language-python">stores = Store.objects.all()
+</code></pre>
+<p>其中 <code>Store.objects</code> 會回傳一個 model manager。這個 manager 提供了 <code>all</code> method，回傳一個 query 物件。所以 <code>stores</code> 包含的是一個 query 物件，其中包含一個 SQL 指令（但尚未執行），大致等同於下面的格式：</p>
+<pre><code class="sql language-sql">SELECT * FROM "stores";
+</code></pre>
+<p>所以我們可以用上面的語法，建立列表頁面的 view function：</p>
+<pre><code class="python language-python"># stores/views.py
+
+from .models import Store
+
+def store_list(request):
+    stores = Store.objects.all()
+    return render(request, 'store_list.html', {'stores': stores})
+</code></pre>
+<p>我們取出所有的 store objects 後，在 <code>render</code> 的最後面增加一個參數。這個參數為 <code>render</code> 提示了額外的 context data，可以在處理 template 時使用。</p>
+<p>再來是 <code>store_list.html</code>：</p>
+<pre><code class="html language-html">{# stores/templates/store_list.html #}
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;店家列表 | 午餐系統&lt;/title&gt;
+&lt;link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+&lt;nav class="navbar navbar-default navbar-static-top" role="navigation"&gt;
+  &lt;div class="container"&gt;
+    &lt;div class="navbar-header"&gt;
+      &lt;a class="navbar-brand" href="{% url 'home' %}"&gt;午餐系統&lt;/a&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;
+
+&lt;div class="container"&gt;
+  {% for store in stores %}
+  &lt;div class="store"&gt;
+    &lt;h2&gt;{{ store.name }}&lt;/h2&gt;
+    &lt;p&gt;{{ store.notes }}&lt;/p&gt;
+  &lt;/div&gt;
+  {% endfor %}
+&lt;/div&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>我們看到了一組新的 template tags <code>for</code> 與 <code>endfor</code>。這是 Django templates 中表示迴圈的方法，對 Python programmers 而言這應該不難理解。在 templates 裡沒辦法用縮排表示階層，所以我們是用一個 <code>endfor</code> 標籤來標示迴圈結束。取用物件內 attributes 的方法仍然是用一個點，不過我們必須在旁邊加上兩組大括弧，來標注這是 template 語法，而不是真的要在 HTML 中印出 <code>store.name</code> 這個字串。</p>
+<p>把 server 跑起來，你應該可以在 <a href="http://localhost:8000/store/">http://localhost:8000/store/</a> 看到列表頁。不錯吧！接著是每個店家的獨立頁面。</p>
+<p>第一件事情：我們要規劃如何把網址對應到合適的頁面。Django 的做法就是用 capturing groups：</p>
+<pre><code class="python language-python"># lunch/urls.py
+
+from django.conf.urls import include, url
+from django.contrib import admin
+from stores.views import home, store_list, store_detail                 # 記得 import
+
+urlpatterns = [
+    url(r'^$', home, name='home'),
+    url(r'^store/$', store_list, name='store_list'),
+    url(r'^store/(?P&lt;pk&gt;\d+)/$', store_detail, name='store_detail'),    # 新增這行
+    url(r'^admin/', include(admin.site.urls)),
+]
+</code></pre>
+<p><code>(?P&lt;name&gt;pattern)</code> 是 regular expression 的 <strong>named group</strong>，就是根據 pattern 把抓到的 group 取名為 <code>name</code>，這在 <code>url</code> tag 裡面會用到，稍後解釋。<code>pk</code> 在這裡指 primary key，是 Django 慣用的命名法。</p>
+<p>接者是 view function。在 URL 中被捕捉的值會直接被傳入，所以：</p>
+<pre><code class="python language-python"># stores/views.py
+
+from django.http import Http404
+
+def store_detail(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+    return render(request, 'store_detail.html', {'store': store})
+</code></pre>
+<p>我們前面提過，model manager 與 query 物件會提供 query methods，用來建構新的 query object。但它們也有一些可以直接回傳單一物件的 query methods——例如這裡的 <code>get</code>。這個 method 的用途就是取得「一個」物件來回傳，或者如果找不到，就 raise 一個 <code>Model.DoesNotExist</code> exception。在這個例子裡，我們把這個 exception 用 try-except block 包起來，在找不到對應物件時回應 404 Not Found。[註 1]</p>
+<p>不過為什麼我們可以直接使用 <code>pk</code>？我們的 model 裡沒有這個值吧？其實 <code>pk</code> 是 Django model 的特殊性質，永遠指向該 model 的 primary key（當然）。前面提過，Django model 一定要有 primary key，而且如果你沒有特別設定，預設會在每一個 model 加上一個 <code>id</code> 欄位來當作 primary key。所以在這個例子中使用 <code>pk</code> 就等同於 <code>id</code>，但是用 <code>pk</code> 在大多時候比較有彈性，因為事實上 primary key 可以隨意設定，不見得要是 <code>id</code>。</p>
+<p>最後是 template：</p>
+<pre><code class="html language-html">{# stores/templates/store_detail.html #}
+
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;{{ store.name }} | 午餐系統&lt;/title&gt;
+&lt;link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+&lt;nav class="navbar navbar-default navbar-static-top" role="navigation"&gt;
+  &lt;div class="container"&gt;
+    &lt;div class="navbar-header"&gt;
+      &lt;a class="navbar-brand" href="{% url 'home' %}"&gt;午餐系統&lt;/a&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/nav&gt;
+
+&lt;div class="container"&gt;
+  &lt;h1&gt;{{ store.name }}&lt;/h1&gt;
+  &lt;p&gt;{{ store.notes }}&lt;/p&gt;
+  &lt;table class="table"&gt;
+    &lt;thead&gt;
+      &lt;tr&gt;&lt;th&gt;品項&lt;/th&gt;&lt;th&gt;單價&lt;/th&gt;&lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+      {% for item in store.menu_items.all %}
+      &lt;tr&gt;&lt;td&gt;{{ item.name }}&lt;/td&gt;&lt;td&gt;{{ item.price }}&lt;/td&gt;&lt;/tr&gt;
+      {% endfor %}
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+&lt;/div&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>我們這裡又多玩了一個小花樣。還記得 <code>Store</code> 與 <code>MenuItem</code> 之間的多對一關聯嗎？我們這裡用了 <code>menu_items</code> 這個 reverse relation key，來獲得所有與 <code>Store</code> 物件有關聯的 <code>MenuItem</code> 實例。由於 <code>Store</code> 到 <code>MenuItem</code> 是多對一，所以 <code>menu_items</code> 同樣會回傳一個 model manager；我們這裡同樣用 <code>all</code> 把所有物件列出。注意在 template 中，呼叫方法時並不用加括弧！</p>
+<p>現在我們有 detail 頁了，所以可以在列表頁加上連結。把 <code>stores/templates/store_list.html</code> 的 <code>&lt;h2&gt;</code> 那行改成這樣：</p>
+<pre><code class="html language-html">&lt;h2&gt;&lt;a href="{% url 'store_detail' pk=store.pk %}"&gt;{{ store.name }}&lt;/a&gt;&lt;/h2&gt;
+</code></pre>
+<p>我們再次使用了 <code>url</code> tag，不過這次除了 name 之外多加了一個參數。這裡傳入的參數會被用在 URL 的 capturing group 上，所以這樣就可以得到某個 store 的 URL！</p>
+<blockquote>
+  <p>來比對一下 template 中的 <code>url</code> tag 與 <code>urls.py</code>的內容幫助理解順便複習概念：</p>
+  <ul>
+  <li><code>{% url 'store_detail' pk=store.pk %}</code></li>
+  <li><code>url(r'^store/(?P&lt;pk&gt;\d+)/$', store_detail, name='store_detail')</code></li>
+  </ul>
+  <p>url tag 的第一個 arg 會先去 urls.py 中找到 <code>name='store_detail' 的 url</code>，但由於我要拿到該 Store 的 url 還需要一個 pk 參數（不然誰知道你要拿哪家 store 的 url？），所以第二個 arg 我們就指定為該 <code>store</code>的<code>pk</code>、把<code>store.pk</code>傳入給<code>(?P&lt;pk&gt;\d+)</code>。</p>
+</blockquote>
+<p>如果你熟悉 CRUD 的話，我們今天實作的其實就是那個 R。其實不難吧！不過上面的程式其實不是很優秀，所以我們明天會花一點來改寫，讓它符合 best practice。</p>
+<hr />
+<p>註 1：那麼，如果有很多個物件符合，會回傳哪一個？答案是都不會！如果 <code>get</code> 找到超過一個結果，會 raise <code>Model.MultipleObjectReturned</code> 例外。不過在實務上，這個 method 通常是用在有 UNIQUE 屬性的欄位，所以這個 exception 比較少被使用。詳細的用法可參考<a href="https://docs.djangoproject.com/en/dev/ref/models/querysets/#django.db.models.query.QuerySet.get">官方文件</a>。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>
