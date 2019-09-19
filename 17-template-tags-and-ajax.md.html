@@ -1,0 +1,218 @@
+
+    <html>
+      <head>
+        <title>Chapter17</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>我們現在是在 view 裡判斷是否能 delete。但是這種繁瑣的東西實在應該被放到 model 才對。我們在 <code>Store</code> 新增一個 method，來把這些東西 refactor 出去：</p>
+<pre><code class="python language-python"># stores/models.py
+
+class Store(models.Model):
+    # ...
+    def can_user_delete(self, user):
+        if not self.owner or self.owner == user:
+            return True
+        if user.has_perm('stores.delete_store'):
+            return True
+        return False
+</code></pre>
+<p>這樣 view 就簡單多了：</p>
+<pre><code class="python language-python"># stores/views.py
+
+def store_delete(request, pk):
+    # ...
+    if store.can_user_delete(request.user):
+        store.delete()
+        return redirect('store_list')
+    # ...
+</code></pre>
+<p>但這要怎麼在 template 使用？這樣嗎？</p>
+<pre><code class="html language-html">{{ store.can_user_delete(user) }}
+</code></pre>
+<p>呃，好像不行。因為 Django 不允許在 template 中呼叫帶引數的 methods。為了這個目的，我們必須實作一個 template tag。</p>
+<p>我們前面已經看過幾個 template tags，例如內建的 <code>urls</code>、<code>for</code>、<code>extends</code> 等等，以及來自 Django Crispy Forms 的 <code>crispy</code> tag 與 filter。不過這些東西究竟是怎麼寫的？</p>
+<p>在 <code>stores</code> 目錄下建立 <code>templatetags</code> 目錄，於其中新增兩個檔案：<code>__init__.py</code> 與 <code>stores_tags.py</code>。接著在後者輸入以下內容：</p>
+<pre><code class="python language-python">from django.template import Library
+
+register = Library()
+
+@register.filter
+def deletable(store, user):
+    return store.can_user_delete(user)
+</code></pre>
+<p>Django template tag/filter 其實就是 Python function，只是我們要用一個 decorator 把它註冊到 template system 裡，才能被 Django 辨識。這個 filter 的作用其實就只是把 <code>can_user_delete</code> 包起來。</p>
+<p>用法就和一般的 template tag/filter 一樣。在 detail view 中加上下面這行，引入我們剛剛做的 template tag library：</p>
+<pre><code class="html language-html">{% load stores_tags %}
+</code></pre>
+<p>然後用一個 <code>if</code> tag 把原本的刪除按鈕包起來。完成之後，你的 delete form 應該會長得像這樣：</p>
+<pre><code class="html language-html">&lt;form method="post" action="{% url 'store_delete' store.pk %}"&gt;
+  {% csrf_token %}
+  {% if store|deletable:user %}
+  &lt;button type="submit" class="btn btn-danger"&gt;刪除&lt;/button&gt;
+  {% endif %}
+&lt;/form&gt;
+</code></pre>
+<p>就實作完成 detail view 的刪除了。現在只有當使用者確實可以刪除某個店家時，才能看到刪除按鈕。問題解決！</p>
+<p>接著在列表頁也加上類似的東西。不過這次我們來用 Ajax 實作。我們想要做到：</p>
+<ol>
+<li>在列表頁的每個店家旁邊都增加一個刪除按鈕（如果使用者可以刪除該店家）。</li>
+<li>按下按鈕後，用 Ajax 發一個 DELETE request。</li>
+<li>Django 收到 DELETE request 後進行刪除，成功則回傳 200 OK。</li>
+<li>當 JavaScript 接收到刪除成功的訊息，直接把列表頁中的對應項目移出 DOM。</li>
+</ol>
+<p>第一步很簡單：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_list.html #}
+
+{% load stores_tags %}
+
+&lt;!-- ... --&gt;
+&lt;div class="store"&gt;
+  {% if store|deletable:user %}
+  &lt;button data-href="{% url 'store_delete' store.pk %}"
+      class="btn btn-danger pull-right btn-delete"&gt;
+    刪除
+  &lt;/button&gt;
+  {% endif %}
+&lt;!-- ... --&gt;
+</code></pre>
+<p>接著是第二步——我們要寫 JavaScript 了。首先把 jQuery 加進來，然後新增一個 block：</p>
+<pre><code class="html language-html">{# base/templates/base.html #}
+
+&lt;!-- 放在 body 最後面 --&gt;
+&lt;script src="//code.jquery.com/jquery-2.1.1.min.js"&gt;&lt;/script&gt;
+{% block js %}{% endblock js %}
+
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>接著我們要來實作 Ajax⋯⋯不，等等！我們還得做一件事情。還記得 Django 會檢查 CSRF token 嗎？當你使用 Ajax 時，它還是會檢查。所以我們必須多做一些設定。幸好 Django 官方文件就有<a href="https://docs.djangoproject.com/en/dev/ref/contrib/csrf/#ajax">教你怎麼做</a>。不過這要放哪裡？</p>
+<p>Django 把網站中不是動態產生的檔案統稱為 static files，並用 <code>django.contrib.staticfiles</code> 來管理它們。管理的邏輯和 templates 很像。我們來建立一個 <code>base.js</code>。首先建立 <code>base/static/base/js/</code> 目錄，並在其中建立一個 <code>base.js</code>，然後把官方文件中的範例程式碼抄進去：</p>
+<pre><code class="javascript language-javascript">// base/static/base/js/base.js
+
+(function ($) {
+
+function getCookie(name) {
+  var cookieValue = null;
+  if (document.cookie &amp;&amp; document.cookie !== '') {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i &lt; cookies.length; i++) {
+      var cookie = $.trim(cookies[i]);
+      // Does this cookie string begin with the name we want?
+      if (cookie.substring(0, name.length + 1) == (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+function csrfSafeMethod(method) {
+  return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+  'beforeSend': function(xhr, settings) {
+    if (!csrfSafeMethod(settings.type) &amp;&amp; !this.crossDomain) {
+      xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+    }
+  }
+});
+
+})(jQuery);
+</code></pre>
+<p>然後在 <code>base/templates/base.html</code> 中引入：</p>
+<pre><code class="html language-html">{% load staticfiles %}
+
+&lt;!-- 要放在 jQuery 後面 --&gt;
+&lt;script src="{% static 'base/js/base.js' %}"&gt;&lt;/script&gt;
+</code></pre>
+<p>可以看到路徑的邏輯也和 template 很像。</p>
+<p>設定 CSRF token 後，我們就可以實作第二步與第四步。同樣在 <code>stores</code> 目錄中也建立 static 目錄，加入以下檔案：</p>
+<pre><code class="javascript language-javascript">// stores/static/stores/js/store_list.js
+
+(function ($) {
+$('.btn-delete').click(function () {
+  var button = this;
+  $.ajax({
+    'url': $(button).data('href'),
+    'type': 'DELETE'
+  }).done(function () {
+    $(button).parent('.store').remove();
+  }).fail(function (e) {
+    console.log(e);
+  });
+});
+})(jQuery);
+</code></pre>
+<p>錯誤處理就不管了，如果需要的話自己寫。把這個檔案引入 template：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_list.html #}
+
+{% load staticfiles %}
+
+{# 放在 endblock content 後面 #}
+
+{% block js %}
+&lt;script src="{% static 'stores/js/store_list.js' %}"&gt;&lt;/script&gt;
+{% endblock js %}
+</code></pre>
+<p>最後是第三步，也就是 Python 部分：</p>
+<pre><code class="python language-python"># stores/views.py
+from django.http import HttpResponse
+
+@login_required
+@require_http_methods(['POST', 'DELETE'])
+def store_delete(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+    if store.can_user_delete(request.user):
+        store.delete()
+        if request.is_ajax():
+            return HttpResponse()
+        return redirect('store_list')
+    return HttpResponseForbidden()
+</code></pre>
+<p>我們把 <code>DELETE</code> 也加入允許列表，並且在成功時使用 <code>request.is_ajax()</code> 判斷，如果是 Ajax request 則直接回傳 <code>HTTPResponse</code> 代表 200 OK。</p>
+<p>大功告成！試著刪除點東西試試吧。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,162 @@
+
+    <html>
+      <head>
+        <title>Chapter29</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>今天我們來談談 Django 的 template tags 背後的原理。Django 在 <code>django.template</code> 子模組中實作了一個 <a href="http://en.wikipedia.org/wiki/Recursive_descent_parser">recursive descent parser</a>。當你的 template 被讀入時，會經過這個 parser 處理成 <a href="http://zh.wikipedia.org/wiki/抽象語法樹">AST</a>，接著一個 renderer 負責將這個 AST 輸出成字串。在產生 AST 時，template 中的所有內容都會被轉化成下列其中之一：</p>
+<ol>
+<li>用 <code>{% ... %}</code> 語法寫出的元件代表一個 block 的開始或結束（或者一整個 block 本身）。Django 會根據該元件宣告時的定義，收集整個 block 中的資訊，轉為一個 <em>block token</em>。這是唯一內部可以有 child tokens 的元件。</li>
+<li>用 <code>{# ... #}</code> 寫出的元件會被轉為 <em>comment token</em>，代表註解。它會在 template 變成 HTML 時被捨棄。</li>
+<li>用 <code>{{ ... }}</code> 寫出的元件會被轉為 <em>variable token</em>。Django 會根據裡面的 variable name 從 context 中尋找它的值，再檢查後面有沒有接 filters（<code>|</code> 語法），如果有就進行額外的處理，然後輸出。</li>
+<li>其他所有輸入都會成為 <em>text token</em>，會直接被輸出。</li>
+</ol>
+<p>其中 2. 和 4. 沒什麼好解釋的。我們來看一個 variable token 的例子：</p>
+<pre><code>{{ foo }}
+</code></pre>
+<p>這會讓 Django 去 context 中尋找 <code>foo</code> 這個變數。如果你用下面這個 <code>dict</code> 產生 context （不論用 <code>render</code> 之類的函式，或直接建構 <code>django.template.Context</code> instance）：</p>
+<pre><code class="python language-python">{
+    'foo': object(),
+    'bar': None,
+}
+</code></pre>
+<p>那麼上面的 variable token 就會輸出像下面的內容：</p>
+<pre><code>&lt;object object at 0x106647070&gt;
+</code></pre>
+<p>注意 Django 會自動把所有東西都轉成字串。如果在 context 裡沒有對應的 key，則 Django 會<strong>輸出空字串</strong>。這和 Python 中如果找不到 key 會 raise <code>KeyError</code> 的行為不太一樣，要注意。</p>
+<p>如果 variable token 中包含 filter syntax，像這樣：</p>
+<pre><code>{{ foo|id|divide:2 }}
+</code></pre>
+<p>則 Django 會去 registry（Django 存放 template 所需資訊的地方）尋找有沒有符合名稱的 filter，如果有就套用（否則會提示錯誤）。假設你有兩個 filters，像這樣：</p>
+<pre><code class="python language-python">from __future__ import division
+from django.template import Library
+
+register = Library()    # 產生與 Django template tag registry 溝通的 interface。
+
+@register.filter(name='id')     # 把 filter 註冊進 registry。
+def do_id(value):
+    return id(value)
+
+@register.filter
+def divide(value, arg):
+    return value / arg
+</code></pre>
+<p>那麼 Django 就會把上面的 token 解讀成這樣：</p>
+<pre><code class="python language-python">divide(do_id(context['foo']), 2)
+</code></pre>
+<p>注意上面有個重點：如果你不想或不能讓你的 filter 與 function 同名（例如上面的 <code>id</code> filter 會蓋掉內建的 <code>id</code> function），可以在 <code>filter</code> decorator 多加一個 <code>name</code> argument（並注意 Django 習慣在這種狀況使用 <code>do_</code> prefix）。另外，filter 的輸入值是<strong>還沒被轉成字串</strong>之前的值，所以我們可以直接在 <code>divide</code> 中用除法。但如果你的 filter 預期只會處理字串，則可以為你的 function 多加一個 decorator：</p>
+<pre><code class="python language-python">from django.template.defaultfilters import stringfilter
+
+@register.filter
+@stringfilter
+def cut(value, arg):
+    return value.replace(arg, '')
+</code></pre>
+<p>這樣無論你輸入什麼變數，Django 都會自動先幫你把它轉成字串。所以即使你這樣用：</p>
+<pre><code>{{ 12345|cut:3 }}     {# 結果會是 1245 #}
+</code></pre>
+<p>也不會出錯，因為 <code>stringfilter</code> 會自動把 <code>12345</code> 和 <code>3</code> 轉成 <code>'12345'</code> 與 <code>'3'</code>。</p>
+<p>Block tokens 可能有兩種型態。它可以是 self-contained，像這樣：</p>
+<pre><code>{% now '%Y-%m-%d' %}
+</code></pre>
+<p>或者是由一個 start tag、一個 end tag、以及之間的內容組成，例如：</p>
+<pre><code>{% upper %}     {# start tag #}
+Hello!
+{% endupper %}  {# end tag #}
+</code></pre>
+<p>不論是哪一種，其實在實作時都分成兩個部分：一個 entry function，以及一個 <code>Node</code> subclass。一個 self-contained tag 可以這樣實作：</p>
+<pre><code class="python language-python">from django.template import Node, TemplateSyntaxError, Variable
+from django.utils.timezone import now
+
+class NowNode(Node):
+
+    def __init__(self, format_string):
+        super().__init__()
+        self.format_string = format_string
+
+    def render(self, context):
+        format_string = Variable(self.format_string).resolve(context)
+        return now().strftime(format_string)
+
+@register.tag(name='now')
+def do_now(parser, token_list):
+    try:
+        tag_name, format_string = token_list.split_contents()
+    except ValueError:  # Not exactly two arguments.
+        raise TemplateSyntaxError(
+            'Template tag {name} takes exactly two arguments.'.format(
+                name=tag_name
+            )
+        )
+    return NowNode(format_string)
+</code></pre>
+<p>當 parser 遇到 <code>{% now '%Y-%m-%d' %}</code> 時，會呼叫 <code>do_now</code>，並把自己與 token list 傳入。我們可以自己處理它們，但這裡直接用內建的方法把他們拆開，並建立一個 node，讓 parser 把它存入 AST。當 renderer 遇到這個 node 時，就會呼叫它的 <code>render</code> method，並傳入當下的 context。我們可以用這個 context 來 resolve 先前得到的 token。在上面的例子中，因為 <code>'%Y-%m-%d'</code> 是 string literal，所以 resolve 出來仍然是 string literal，但如果他原本是變數名，<code>resolve</code> 就會去 context 中 lookup 對應值。接著我們就使用得到的參數，告訴 renderer 這個 node 的 render 結果。</p>
+<p>如果 token 是由成對的 tags 組成，我們也可以自己進行額外的 parsing：</p>
+<pre><code class="python language-python">@register.tag
+def do_upper(parser, token_list):           # 遇到 {% upper %} tag 時進入。
+    node_list = parser.parse(('endupper',)) # 繼續 parse，直到遇到 {% endupper %}。
+    parser.delete_first_token()             # 跳過 {% endupper %} tag。
+    return UpperNode(node_list)
+
+class UpperNode(Node):
+    # 略。
+</code></pre>
+<p>這個架構的彈性非常大，所以我們可以實作任何我們想要的功能，只要符合 Django template language 的語法即可。但在絕大多數情況中，我們其實只是簡單想把參數讀入，然後做件簡單的事情就回傳而已。所以 Django 提供了一些方便的 factory decorators，簡化一些常見的工作。例如上面的 <code>now</code> tag 其實可以簡化成下面這樣：</p>
+<pre><code class="python language-python">@register.simple_tag(name='now')    # simple_tag 接受一些參數，並輸出一個字串。
+def do_now(format_string):
+    return now.strftime(format_string)
+</code></pre>
+<p>這會自動檢查參數數量（根據你的函式宣告）、在合適時刻 resolve variables、以及輸出結果。其他的類似 decorators 包含：</p>
+<ul>
+<li><code>inclusion_tag</code>：可以自動幫你 render 一個 template 並輸出。</li>
+<li><code>assignment_tag</code>：可以自動把 tag 結果存入某個變數（用 <code>as</code> syntax 指定變數名），並輸出空字串。</li>
+</ul>
+<p>當你需要手動處理 context（而不僅只是需要 variable resolution）時，也可以在 decorator 上使用 <code>takes_context=True</code> 參數。這會讓 Django 在呼叫 function 時多傳入一個 <code>context</code> 參數，像這樣：</p>
+<pre><code class="python language-python">@register.simple_tag(name='now', takes_context=True)
+def do_now(context, format_string):
+    timezone = context['timezone']
+    return your_get_current_time_method(timezone, format_string)
+</code></pre>
+<p>篇幅也差不多了。Django templates 還有更多可以自訂的地方，詳情請參考<a href="https://docs.djangoproject.com/en/dev/howto/custom-template-tags/">官方文件</a>。明天就是最後一篇了，yay！</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

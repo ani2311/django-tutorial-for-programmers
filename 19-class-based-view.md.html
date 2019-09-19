@@ -1,0 +1,118 @@
+
+    <html>
+      <head>
+        <title>Chapter19</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>和說好的一樣，今天要來解釋 Django 的 generic view classes——又稱 class-based views，簡稱 CBV——的運作原理。</p>
+<blockquote>
+  <p>CBV 能做到的事情跟 function based view 完全相同，然而由於使用 class，所以當你的 view function 中有很多重複的 code 時（例如一堆 views 都需要要取得相同的 context data 時），這時 CBV 的優勢就在於可以繼承 。</p>
+  <p>上章有提到 Django 內建了一些常用的 CBV，然而你會發現根本搞不懂他到底是怎麼運作的、也因此不知該如何用。因為 CBV 做了很多 magic，理解要如何使用 CBV 的最好方法可能就是直接看 CBV 的原始碼，以下將會直接從 CBV 的原始碼下手，帶你理解 CBV 的運作方式。但由於 CBV 做的事情跟你寫 view function 能做的事情其實一模一樣，所以如果下面這篇真的看不懂也沒關係，一樣可以先寫 function based view，等很熟悉整個 view function 的流程時再來理解 CBV。</p>
+</blockquote>
+<p>在開始之前，請打開 <a href="http://ccbv.co.uk">http://ccbv.co.uk</a>，方便我們追蹤 CBV 裡面的源碼。</p>
+<p>所有的 generic views 都必須繼承 <code>View</code> class，所以我們從它開始看起。在 <strong>BASE</strong> 下面找到 <code>View</code>，按下去！</p>
+<p>先複習一下 view 的概念：</p>
+<pre><code>           ┌──────────────┐
+ request   │              │  response
+─────────&gt; │     view     │ ──────────&gt;
+           │              │
+           └──────────────┘
+</code></pre>
+<p>但 View 是個 class，要怎麼像上面這樣被執行？在 <code>urls.py</code> 裡的使用方法有給線索：</p>
+<pre><code class="python language-python">url(r'^new/$', views.EventCreateView.as_view(), name='event_create'),
+</code></pre>
+<p>看起來 <code>as_view</code> 似乎是個 class method（或 static method）。我們來看看它的實作。在 CCBV 網頁中找到這一行</p>
+<pre><code>def as_view(cls, **initkwargs):
+</code></pre>
+<p>點下去展開它，就可以看到源碼。看來它做了不少事情，不過可以注意到中間有個 <code>def</code> 區塊，宣告了一個叫 <code>view</code> 的 function，並且在最後把它回傳出去。所以其實 <code>as_view()</code> 被呼叫後，仍然產生一個 view function！</p>
+<p>但這個 function 做了什麼事？看看裡面：</p>
+<pre><code class="python language-python">def view(request, *args, **kwargs):
+    self = cls(**initkwargs)
+    # ...
+    return self.dispatch(request, *args, **kwargs)
+</code></pre>
+<p>所以其實它會呼叫 <code>dispatch</code>。來看看這個 method 又是做什麼的：</p>
+<pre><code class="python language-python">def dispatch(self, request, *args, **kwargs):
+    if request.method.lower() in self.http_method_names:
+        handler = getattr(
+            self, request.method.lower(), self.http_method_not_allowed
+        )
+    else:
+        handler = self.http_method_not_allowed
+    return handler(request, *args, **kwargs)
+</code></pre>
+<p>所以它會去找 class 裡有沒有對應於目前 HTTP 動詞的 method 來呼叫，例如 GET request 會呼叫 <code>get</code>、POST 會呼叫 <code>post</code>，依此類推。但是如果動詞不在 <code>http_method_names</code> 裡，或者找不到對應的 method，就會呼叫 <code>http_method_not_allowed</code>。</p>
+<p>似乎有點進展了。我們先不管 <code>http_method_not_allowed</code>（其實預設行為就只是回傳一個 405 Method not allowed），來繼續追下去。實作動詞方法是 subclasses 的責任，所以我們來看一個我們有用到的：<code>DetailView</code>。</p>
+<p>在 CCBV 打開 <code>DetailView</code> 的頁面。首先注意到上面有個 <strong>Ancestors (MRO)</strong> 欄位——這裡面寫出了 <code>DetailView</code> 的所有 superclasses。[註 1] 可以看到 <code>View</code> class 也在其中。</p>
+<p>回到原本的主題。打開 <code>get</code> 看看！</p>
+<pre><code class="python language-python">def get(self, request, *args, **kwargs):
+    self.object = self.get_object()
+    context = self.get_context_data(object=self.object)
+    return self.render_to_response(context)
+</code></pre>
+<p>所以我們要先來看 <code>get_object</code>。這個 method 做了以下的事情：</p>
+<ol>
+<li>呼叫 <code>get_queryset</code> 取得一個 <code>QuerySet</code> instance（根據你在宣告 class 時指定的 <code>model</code> attribute）。</li>
+<li>取得 <code>pk</code> 或 <code>slug</code> 參數。（不討論這部分，反正它會取得合適的欄位名，並從網址中得到參數。）</li>
+<li>用上面的參數對 query set 呼叫 <code>get</code>，取得所要的物件並回傳。如果物件不存在則 <code>raise Http404</code>。</li>
+</ol>
+<p><code>get_object</code> 結束後，我們回到 <code>get</code> method。接著 <code>get_context_data</code> 會回傳一個 <code>dict</code>，最後 <code>render_to_response</code> 會用這個 <code>dict</code> 當作 context、取得指定的 template（預設名稱是 <strong>model 名稱轉成小寫 + _detail.html</strong>，但也可以用 <code>template_name</code> attribute 來指定），將它們組合以產生一個 <code>HttpResponse</code>。所以這部分我們之前習慣用的 <code>render</code> function 差不多！而且這邊的 <code>kwargs</code> 是一路從 <code>dispatch</code> 傳進來的，所以其實就是 URL pattern 中捕捉到的參數。</p>
+<p>把上面一整串展開，其實 <code>DetailView</code> 做的事情就是：</p>
+<ol>
+<li>檢查 HTTP 動詞是否被允許（類似 <code>require_http_methods</code> 的作用）。</li>
+<li>根據 URL 中的參數，在指定的 model 中取得一個 instance。</li>
+<li>用傳入的參數與前面的 instance 變成 <code>dict</code>，準備當作 context。</li>
+<li>取得指定的 template。</li>
+<li>將 context 與 template 組合產生 HTTP response（預設產生 <code>HttpResponse</code> 實例，所以是 200 OK）。</li>
+<li>這個 response 會一直往上被回傳，直到最外面的 view function。</li>
+</ol>
+<p>所以其實和 view function 做的事情差不多！</p>
+<p>我們再來看一個，之前應該也很熟悉的 create pattern。這當然是用 <code>CreateView</code> 實作。打開來試試，看看你能不能自己搞懂裡面在做什麼！</p>
+<p>其實 <code>get</code> 的流程和上面差不多，只是 <code>CreateView</code> 不使用 <code>get_object</code>，而是用 <code>get_form</code> 產生 form class（而且就是使用我們之前用過的 <code>modelform_factory</code>！），再與 template（預設名稱是 <strong>model 名稱轉成小寫 + _form.html</strong>，同樣可以自行指定）組合成 response。</p>
+<p><code>post</code> 一開始同樣產生了一個 form。但接著就不太一樣了——這時會根據 form 合法與否（同樣使用 <code>is_valid</code> method）來決定要走哪一條路。<code>form_invalid</code>（不合法）時的結果就和 <code>get</code> 一樣，會用 <code>render_to_response</code> 產生 response；但如果是 <code>form_valid</code>（合法），則會執行 <code>form.save()</code> 產生新物件，接著回傳 <code>HttpResponseRedirect</code> 導向該 object 的 <code>get_absolute_url</code> 結果。</p>
+<p>整體而言，其實也和我們自己寫的 function 作用一樣嘛！但是用了 generic view class，就可以把落落長的 create function 縮短到只有三行！真是方便。Django 的 generic view classes 可能在一開始比較不易理解，但一旦你搞懂裡面在做什麼，就可以迅速作出簡單的功能。要寫 Django project 而不學 CBV 就太可惜了！</p>
+<p>今天我們一行程式都沒寫，但卻看了一大堆別人的程式，希望還是讓你有收獲。明天我們要繼續寫程式，教你怎麼進一步擴充 class-based views。</p>
+<hr />
+<p>註 1：注意這不是繼承樹！Python 允許多繼承，且使用 MRO 來解決 diamond problem；這個列表的順序就是 MRO。有興趣的話可以看看<a href="http://makina-corpus.com/blog/metier/2014/python-tutorial-understanding-python-mro-class-search-path">這篇教學</a>。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,290 @@
+
+    <html>
+      <head>
+        <title>Chapter26</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>網站好像做完了，有點沒梗怎麼辦。XD</p>
+<p>剩下的篇幅好像也不多，就來討論一些比較常被問到的主題吧。不過說真的我也不太確定大家（有人嗎？）想聽什麼。就經驗來看，詢問度最高的好像是要怎麼用 Django 做 REST API，所以今天就先講這個。方便起見就還是用原本的專案來舉例。不過這些就不是原本網站的一部分，只是額外加上去的，所以如果有些東西看起來不太合，就請包涵了。</p>
+<p>若你不知道 REST 是什麼，請看<a href="http://zh.wikipedia.org/zh-tw/REST">維基百科</a>。不管是為了 mobile client、在網頁上用 AJAX、甚至想把前端整個換成 AngularJS 之類的，總之我們現在需要一個 REST API。</p>
+<p>說到 AJAX，我們前面其實就有做過這種東西了嘛。如果你只是想讓幾個 view 回傳 JSON 之類的東西，其實根本用不著什麼技巧；Django 的 CBV 本身就提供 CRUD 封裝，JSON 和 XML serializer 更是 Python 內建，所以只要用幾個 CBV、稍微改寫幾個 methods，就可以輕鬆做出簡單的 REST API。Django Braces 也有一些好用的 mixins 可以協助。不過如果你需要比較完整的 REST API，或者要實作的東西比較多——例如 authentication/authorisation、throttling、同時支援不同的 formats、處理 foreign keys 等等，就可以考慮使用一個完整的 REST API library。</p>
+<p>現在 Django 界比較慣用的 REST API framework 主要有兩個：Django REST framework 和 Tastypie。用法其實差不多，都是用類似 CBV 的架構（雖然不見得是真的用 CBV）把一些 boilerplate code 簡化掉，來表達你想呈現的資源，例如 ORM 的 model 等等。</p>
+<p>廢話太多了。總之這兩者的架構都差不多是這樣：</p>
+<p><img src="assets/rest-api.png" alt="REST API structure" /></p>
+<p>如果想建立一個基於 ORM model 的 REST API，我們需要依下面的概念設定：</p>
+<ol>
+<li>為每個需要的 model 建立一個 resource，並把它們註冊到一個共用的 API object。</li>
+<li>把上述 API object 連結到某個 URL 底下，讓它負責把 request URI map 到正確的 resource 上。</li>
+<li>當使用者訪問某個 API URI 時，對應的 resource 會根據我們給它的定義處理 auth-auth、throttling、(de)serialisation 等，並產生對應的 ORM query 對 model 進行存取。</li>
+</ol>
+<p>我們來為 lunch 網站做個簡單的 REST API。因為篇幅關係，權限管理會單純一點（而且老實講我之前的網站也沒規劃得很好 XD）：</p>
+<ol>
+<li>已登入的使用者可以建立店家，並修改和刪除自己建立的店家。</li>
+<li>使用者可以為自己建立的店家新增/修改/刪除菜單項目。</li>
+<li>所有人都可以瀏覽店家列表與單一店家資訊。</li>
+</ol>
+<p>所有 API 都使用 JSON，認證都是用 Django 預設的 session 認證。</p>
+<p>我們一個一個來。</p>
+<h2 id="django-rest-framework">Django REST Framework</h2>
+<p>安裝：</p>
+<pre><code class="bash language-bash">pip install djangorestframework
+</code></pre>
+<p>啟用：</p>
+<pre><code class="python language-python"># lunch/settings/base.py
+
+INSTALLED_APPS = [
+    ...
+    'rest_framework',
+]
+</code></pre>
+<p>從上面的需求看來，大部份的資源都是必須登入才能使用（除了包含菜單的店家資訊之外），所以我們新增以下的設定，指名預設權限：</p>
+<pre><code class="python language-python"># lunch/settings/base.py
+
+REST_FRAMEWORK = {
+    # Django REST Framework 預設就是使用 JSON，所以不用設定。
+    # 使用 session 登入。
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    # 必須登入才能使用。
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+</code></pre>
+<p>接著我們為需要的 models 建立 resources——在 Django REST Framework 中稱作 view sets：</p>
+<pre><code class="python language-python"># stores/api.py
+
+from rest_framework import viewsets, serializers, permissions
+from .models import Store, MenuItem
+
+class MenuItemRelatedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MenuItem
+        fields = ['name', 'price']
+
+class StoreSerializer(serializers.ModelSerializer):
+
+    menu_items = MenuItemRelatedSerializer(many=True)
+
+    class Meta:
+        model = Store
+
+class StoreViewSet(viewsets.ModelViewSet):
+    queryset = Store.objects.all()
+    serializer_class = StoreSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+</code></pre>
+<p>我們為 <code>Store</code> 與 <code>MenuItem</code> 各建立一個 view set，包含列表頁、細節頁的 CRUD 功能。預設會列出 model 的所有資訊。這對 menu item 而言夠了，但對 store 而言不夠好——因為我們還想列出與店家相關的菜單項目。為了達到這個目的，我們必須為這個 view set 建立一個 serializer，要求把 <code>menu_items</code> attribute（記得嗎？這是 Django 自動加入的 reverse relation field）也列出（<code>many=True</code> 代表這是個 to-many 關聯）。預設狀況下 Django REST Framework 只會列出 related objects，但我們想把 menu item 的內容 inline，所以同樣要為 menu item 建立 serializer，並明確指定要使用它來 serialize menu item。最後，因為我們希望未登入的人也能看（記得我們前面設定的預設權限是僅已登入者可使用），所以把 permission 改設成 <code>IsAuthenticatedOrReadOnly</code>。</p>
+<p>現在我們有店家列表與單一店家資訊（含其中菜單），也可以新增與更新店家資訊，但如果我們只想為某個店家新增、修改或刪除一個菜單項目，需要對該項目 PUT 並包含它其他所有的 menu items，不是很方便。所以我們來為 menu item 單獨製作一個細節頁的 CUD（沒有 R）view：</p>
+<pre><code class="python language-python"># stores/api.py
+
+from rest_framework import mixins
+
+class MenuItemViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin,
+                      mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    queryset = MenuItem.objects.all()
+</code></pre>
+<p>就這樣！作法其實和 CBV 差不多，我們在這裡不是用 all-in-one 的 <code>ModelViewSet</code>，而是用什麼都沒有的 <code>GenericViewSet</code>，然後手動把需要的功能用 mixins 加入。我們只加入 create、update 和 destroy，所以就只會有 CUD 功能。記得我們的預設權限是只有登入才能使用，所以這裡就不用再指定 permission 了，設定 model 即可。</p>
+<p>接著我們要把這些 view sets 註冊到 API object（在 Django REST Framework 中叫 router）裡：</p>
+<pre><code class="python language-python"># lunch/api.py
+
+from rest_framework import routers
+from stores.api import StoreViewSet, MenuItemViewSet
+
+v1 = routers.DefaultRouter()
+v1.register(r'store', StoreViewSet)
+v1.register(r'stores/menu_item', MenuItemViewSet)
+</code></pre>
+<p>我們建立了一個 router，然後把兩個 view sets 註冊進去。然後把 router 加入 URL conf：</p>
+<pre><code class="python language-python"># lunch/urls.py
+
+from .api import v1
+
+urlpatterns = [
+    # ...
+    url(r'^api/v1/', include(v1.urls)),
+]
+</code></pre>
+<p><code>register</code> 的第一個參數是 prefix，所以這樣就會產生如下的 API：[註 1]</p>
+<p>Path pattern            | 功能<br />
+------------------------|------<br />
+/api/v1/store/          | GET 店家列表與 POST 建立新店家<br />
+/api/v1/store/<pk>      | GET 店家資訊，PUT 更新店家，PATCH 部分更新，DELETE 刪除<br />
+/api/v1/stores/menu<em>item/      | POST 建立新菜單項目
+/api/v1/stores/menu</em>item/<pk>  | PUT 更新、PATCH 部分更新、DELETE 刪除</p>
+<h2 id="tastypie">Tastypie</h2>
+<p>安裝：</p>
+<pre><code class="bash language-bash">pip install django-tastypie
+</code></pre>
+<p>設定：</p>
+<pre><code class="python language-python"># lunch/settings/base.py
+
+INSTALLED_APPS = [
+    # ...
+    'tastypie',
+]
+
+# ...
+
+# Tastypie 預設使用 XML，且必須明確在每個 resource 中指定 auth/auth 資訊。
+TASTYPIE_DEFAULT_FORMATS = ['json']
+</code></pre>
+<p>Tastypie 預設附了一個 API key 的 model，所以我們要建立它：</p>
+<pre><code class="python language-python">python manage.py migrate
+</code></pre>
+<p>接著宣告。注意 Tastypie 習慣用的模組名稱是 <code>resources</code>：</p>
+<pre><code class="python language-python"># stores/resources.py
+
+from tastypie import resources, fields, authentication, authorization
+from .models import Store, MenuItem
+
+class ReadOnlyAuthentication(authentication.Authentication):
+    def is_authenticated(self, request, **kwargs):
+        if request.method.lower() == 'get':
+            return True
+        return False
+
+class MenuItemRelatedResource(resources.ModelResource):
+    class Meta:
+        queryset = MenuItem.objects.all()
+        fields = ['name', 'price']
+
+class StoreResource(resources.ModelResource):
+
+    menu_items = fields.ToManyField(
+        to=MenuItemRelatedResource, attribute='menu_items', full=True,
+    )
+
+    class Meta:
+        queryset = Store.objects.all()
+        resource_name = 'store'
+        authentication = authentication.MultiAuthentication(
+            ReadOnlyAuthentication(),
+            authentication.SessionAuthentication(),
+        )
+        authorization = authorization.DjangoAuthorization()
+
+class MenuItemResource(resources.ModelResource):
+    class Meta:
+        queryset = MenuItem.objects.all()
+        resource_name = 'stores/menu_item'
+        list_allowed_methods = ['get', 'post']
+        detail_allowed_methods = ['post', 'put', 'delete', 'patch']
+        authentication = authentication.SessionAuthentication()
+        authorization = authorization.DjangoAuthorization()
+</code></pre>
+<p>註冊：</p>
+<pre><code class="python language-python"># lunch/api.py
+
+from tastypie.api import Api
+from stores.resources import StoreResource, MenuItemResource
+
+v2 = Api(api_name='v2')
+v2.register(StoreResource())
+v2.register(MenuItemResource())
+</code></pre>
+<pre><code class="python language-python"># lunch/urls.py
+
+from .api import v2
+
+urlpatterns = [
+    # ...
+    # 必須放在 api/v1/ 後面，才不會把它的 patterns 吃掉。
+    url(r'^api/', include(v2.urls)),
+]
+</code></pre>
+<p>可以看到 Tastypie 的風格和 Django REST Framework 不同，比較像 model 和 form 的寫法，是用 <code>Meta</code> 來描述，並且直接把額外的欄位宣告（同樣需要明確宣告 to-many field！）放在 resource 裡，而不是使用一個額外的 class。描述的風格也不太一樣：</p>
+<ul>
+<li>指定 query set，而非 model class。（其實 Django REST Framework 也可以改指定 query set，指定 model 時就是用 <code>all()</code>；只是 Tastypie <strong>一定要</strong>指定 query set。）</li>
+<li>有獨立的 <code>ToMany</code> 欄位（也有 <code>ToOne</code>），並直接提供 <code>full=True</code> 選項直接展開 resource。</li>
+<li>直接在 resource 中設定可以使用的 methods，而不是使用 mixin。</li>
+<li>Resource 的 URI prefix 是直接在 meta 中設定 <code>resource_name</code>，而不是在註冊時設定。</li>
+<li>必須在所有 resources 中明確指定 auth/auth 資訊。</li>
+<li>沒有像 Django REST Framework 那麼豐富的 auth 選項，必須自己實作 <code>ReadOnlyAuthentication</code> 結合內建的 <code>MultiAuthentication</code> 達到需求。</li>
+</ul>
+<p>但整體而言應該也很容易理解。產生的 API 也基本與前面相同，只是把 <code>v1</code> 換成 <code>v2</code>。</p>
+<p>整體而言可以看到兩個 libraries 各有功能比較強的地方，而且風格差距頗大。但是他們都能完成你想要的任務，所以要選哪個就是個人風格。以我自己的經驗來看，Tastypie 在需要建立很「標準」的 REST API，尤其 resource 與你的 data backend 結構非常接近時，會比 Django REST Framework 容易描述，但後者在描述比較複雜的 queryset filtering，尤其需要進行複雜的 join 查詢時，支援比較好。所以依需求選擇也是一個方法，但無論如何兩者都可以辦到任何事情，只是內建提供多少功能，你又需要自己實作多少功能的差異而已。</p>
+<p>對了，你可能已經注意到，Django REST Framework 提供了一系列很方便的 HTML API test views，而 Tastypie 基本上在測試時只能靠額外的 client（例如 cURL）來使用。或許這也是誘因之一，雖然我個人習慣都用 unit tests 來測試，所以這部分比較無感。</p>
+<h2 id="deployment">Deployment</h2>
+<p>最後我們來把今天更新的東西部署到伺服器上面去。首先把新安裝的套件加入 <code>requirements.txt</code>：</p>
+<pre><code>django-tastypie
+djangorestframework
+</code></pre>
+<p>我們在 deploy 到 Ubuntu server 那章也提過，這個 requirements 檔案其實就是用來列出所有需要的套件，方便你用 <code>pip install -r</code> 一次裝好。所以當我們有新安裝任何套件時，就應該更新這裡的內容。[註 2]</p>
+<h3 id="heroku">Heroku</h3>
+<p>把今天的內容 commit 進 Git repository：</p>
+<pre><code class="bash language-bash">git add .
+git commit -m "Add REST API"
+</code></pre>
+<p>然後 push 上去：</p>
+<pre><code class="bash language-bash">git push heroku master
+</code></pre>
+<p>這樣應該就行了！Heroku 應該會把剩下的設定完成。</p>
+<h3 id="ubuntu-server">Ubuntu Server</h3>
+<p>把新版的專案上傳上去之後，同樣進入 venv 並設定環境變數：</p>
+<pre><code class="bash language-bash">. venv/lunch/bin/activate
+export DJANGO_LUNCH_SECRET_KEY=&lt;your_secret_key&gt;
+export DJANGO_LUNCH_DATABASE_DEFAULT_USER=&lt;your_db_user&gt;
+export DJANGO_LUNCH_DATABASE_DEFAULT_PASSWORD=&lt;your_db_pass&gt;
+export DJANGO_SETINGS_MODULE=lunch.settings.deploy_ubuntu
+</code></pre>
+<p>然後用 PIP 把 requirements file 的更新安裝進去：</p>
+<pre><code class="bash language-bash">pip install -r lunch/requirements.txt
+</code></pre>
+<p>注意到 PIP 會自動跳過你已經安裝的套件，所以這裡只會安裝兩個新的（Tastypie 和 Django REST Framework）。</p>
+<p>Migrate 資料庫（Tastypie 有用到）與收集靜態檔（Django REST Framework 的網頁 API view 需要）：</p>
+<pre><code class="bash language-bash">python manage.py migrate
+python manage.py collectstatic
+</code></pre>
+<p>然後要求 Supervisor 重開你的 instance，並重啟 nginx（後者其實不一定需要）：</p>
+<pre><code class="bash language-bash">sudo supervisorctl restart lunch:site
+sudo service nginx restart
+</code></pre>
+<p>就完成了！</p>
+<p>唔，這篇好長。不過應該都是滿直觀的內容，只要有文件可以查應該都不難理解。就到這邊吧。</p>
+<hr />
+<p>註 1：還有一些額外的，但我們關心的只有這些。</p>
+<p>註 2：如果想瞭解更詳細的 requirements file 語法與使用技巧，可以參照 PIP 的<a href="http://pip.readthedocs.org/en/latest/user_guide.html#requirements-files">官方文件</a>。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,203 @@
+
+    <html>
+      <head>
+        <title>Chapter14</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>Django 預設的 form 格式實在不好看。如果我們想要，也可以每個 widget 自己輸出，例如：（以 create form 為例）</p>
+<pre><code class="html language-html">&lt;form action="" method="post" role="form"&gt;
+  {% csrf_token %}
+  &lt;div class="form-group{% if form.name.errors %} has-error{% endif %}"&gt;
+    &lt;label for="{{ form.name.auto_id }}" class="control-label"&gt;{{ form.name.label }}&lt;/label&gt;
+    &lt;input type="text" class="form-control" id="{{ form.name.auto_id }}" name="{{ form.name.name }}"&gt;
+    {% for error in form.name.errors %}
+    &lt;p class="help-block"&gt;{{ error }}&lt;/p&gt;
+    {% endfor %}
+  &lt;/div&gt;
+  &lt;div class="form-group{% if form.notes.errors %} has-error{% endif %}"&gt;
+    &lt;label for="{{ form.notes.auto_id }}" class="control-label"&gt;{{ form.notes.label }}&lt;/label&gt;
+    &lt;textarea class="form-control" id="{{ form.notes.auto_id }}" name="{{ form.notes.name }}" rows="10"&gt;&lt;/textarea&gt;
+    {% for error in form.notes.errors %}
+    &lt;p class="help-block"&gt;{{ error }}&lt;/p&gt;
+    {% endfor %}
+  &lt;/div&gt;
+  &lt;button type="submit" class="btn btn-primary"&gt;建立&lt;/button&gt;
+&lt;/form&gt;
+</code></pre>
+<p>如果你難以理解上面的東西，好像也不奇怪，因為這真的有點麻煩。幸好這種重複性高又繁瑣的東西早就有人幫你做好了。</p>
+<h2 id="第三方套件：django-crispy-forms">第三方套件：Django Crispy Forms</h2>
+<p>我們來用第三方套件 Django Crispy Forms 來快速美化 form。首先安裝：</p>
+<pre><code class="bash language-bash">pip install django-crispy-forms
+</code></pre>
+<p>在 <code>lunch/settings/base.py</code> 裡設定：</p>
+<pre><code class="python language-python">INSTALLED_APPS = [
+    # ...
+    'crispy_forms',     # 新增這個 app。我習慣放在自己的 apps 與 Django apps 中間。
+]
+
+# 新增這個設定
+CRISPY_TEMPLATE_PACK = 'bootstrap3'
+</code></pre>
+<p>然後就可以使用了。把 <code>store_create.html</code> 改成這樣：</p>
+<pre><code class="html language-html">{% extends 'stores/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}建立店家 | {{ block.super }}{% endblock title %}
+
+{% block content %}
+&lt;form action="" method="post" role="form"&gt;
+  {% csrf_token %}
+  {{ form|crispy }}
+  &lt;button type="submit" class="btn btn-primary"&gt;建立&lt;/button&gt;
+&lt;/form&gt;
+{% endblock content %}
+</code></pre>
+<p>我們其實只改了兩行：</p>
+<ol>
+<li><p>在 <code>extends</code> tag 下面加上 <code>load</code> tag。這個 tag 類似 Python 的 import，可以把某個 template tag library 讀進來。</p></li>
+<li><p>把 <code>{{ form.as_p }}</code> 改成 <code>{{ form|crispy }}</code>。這個語法叫做 template filter，可以想成是很簡單的 Python function。例如 <code>crispy</code> filter 就差不多對應到下面的 Python function：</p>
+<pre><code class="python language-python">def crispy(form):
+    # ... 處理
+    return something
+</code></pre></li>
+</ol>
+<p>Django template filter 還有很多玩法。例如用來把日期轉字串的 <code>date</code> filter 可以多吃一個參數，像這樣：</p>
+<pre><code class="html language-html">{{ created_at|date:'Y-m-d' }}
+</code></pre>
+<p>就類似於這樣的函數呼叫：</p>
+<pre><code class="python language-python">date(created_at, 'Y-m-d')
+</code></pre>
+<p>詳情請看<a href="https://docs.djangoproject.com/en/1.7/ref/templates/builtins/#built-in-filter-reference">文件</a>！</p>
+<p>重新整理看看，你的 form 應該瞬間變得很 Bootstrap 了。而且如果表單有誤（例如 <code>name</code> 留空），錯誤訊息也會有合適的格式！</p>
+<p>Update 頁面也可以用同樣的方式美化。自己試試看！希望你可以自行參透，不過如果你卡關，答案在下面：</p>
+<pre><code class="html language-html">{% extends 'stores/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}更新 {{ store.name }} | {{ block.super }}{% endblock title %}
+
+{% block content %}
+&lt;form action="" method="post" role="form"&gt;
+  {% csrf_token %}
+  {{ form|crispy }}
+  &lt;button type="submit" class="btn btn-primary"&gt;更新&lt;/button&gt;
+&lt;/form&gt;
+{% endblock content %}
+</code></pre>
+<p>繼續新增更新幾個店家試試。表單的行為應該完全不會變，只有外觀不同。</p>
+<h2 id="model-forms">Model Forms</h2>
+<p>但其實 Crispy Forms 的威力不僅止于此。它還支援自訂 layout，以及自動幫你產生 <code>&lt;form&gt;</code> tag、CSRF token tag、甚至 submit button！不過要使用這些功能之前，我們得稍微改寫一下 Django form。</p>
+<p>在 <code>stores</code> 裡新增 <code>forms.py</code>，加入以下內容：</p>
+<pre><code class="python language-python">from django import forms
+from .models import Store
+
+class StoreForm(forms.ModelForm):
+    class Meta:
+        model = Store
+        fields = ['name', 'notes']
+</code></pre>
+<p>和 model 的結構類似，<code>Meta</code> class 告訴 Django 這個 form 的一些屬性。其中 <code>fields</code> 指名我們要從 <code>Store</code> model 中引入哪些欄位來使用。</p>
+<p>接著把 <code>stores/views.py</code> 裡的下面幾行刪除：</p>
+<pre><code class="python language-python">from django.forms.models import modelform_factory
+
+StoreForm = modelform_factory(Store)   # 在 create 與 update 各有一行
+</code></pre>
+<p>並加上這一行：</p>
+<pre><code class="python language-python">from .forms import StoreForm
+</code></pre>
+<p>基本上就是把產生 <code>StoreForm</code> 的方法替換，並將它拿到另一個檔案裡。這樣產生出來的結果與 <code>modelform_factory</code> 一模一樣。要使用什麼方法則視你的需求而定；在一般狀況下，直接使用 <code>modelform_factory</code> 就很夠，不過如果你要自訂比較多東西，直接 subclass <code>ModelForm</code> 會更方便一些，擴充性比較好，也比較容易維護。</p>
+<p>馬上來擴充一下 <code>StoreForm</code>：</p>
+<pre><code class="python language-python">from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
+
+class StoreForm(forms.ModelForm):
+
+    class Meta:
+        model = Store
+        fields = ('name', 'notes',)
+
+    def __init__(self, *args, submit_title='Submit', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        if submit_title:
+            self.helper.add_input(Submit('submit', submit_title))
+</code></pre>
+<p>如果你不太熟悉 Python 語法，<code>args</code> 與 <code>kwargs</code> 代表<a href="http://www.cnblogs.com/fengmk2/archive/2008/04/21/1163766.html">可變參數</a>。我們在這裡使用它們，以免得需要寫出所有 <code>ModelForm</code> 的 init 參數——反正我們用不到，只想把它們 relay 進 <code>super().__init__</code> 而已。<code>submit_title</code> 是一個 <a href="http://blog.gahooa.com/2009/12/08/python-has-keyword-only-parameters/">keyword-only argument</a>，代表我們必須在呼叫時明確指定它的名稱，而不能直接傳。這保證我們不會因為誤傳，而不小心覆蓋到 <code>ModelForm</code> 原本的 init 參數（除非它也有定義一模一樣名稱的參數——應該不會）。</p>
+<p>為了讓 Crispy Forms 協助我們處理表單，我們加入了一個 <code>helper</code> attribute，並且告訴它為我們加上一個 submit button。</p>
+<p>接著把 create 與 update templates 裡的 <code>&lt;form&gt;&lt;/form&gt;</code> tag 整個刪掉，換成下面這行：</p>
+<pre><code class="html language-html">{% crispy form %}
+</code></pre>
+<p>換完之後你的 <code>content</code> block 應該就只會剩下這一行。</p>
+<p>重新整理。看起來好像還是差不多，不過程式碼又更精簡了！</p>
+<p>為了讓 create 與 update view 中的 submit button 顯示不同的內容，我們可以在 view function 中使用前面的 <code>submit_title</code> 參數。修改後應該會像這樣：</p>
+<pre><code class="python language-python">def store_create(request):
+    if request.method == 'POST':
+        form = StoreForm(request.POST, submit_title='建立')   # 注意這行
+        if form.is_valid():
+            store = form.save()
+            return redirect(store.get_absolute_url())
+    else:
+        form = StoreForm(submit_title='建立')                 # 注意這行
+    return render(request, 'stores/store_create.html', {'form': form})
+
+
+def store_update(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+    if request.method == 'POST':
+        # 注意這行
+        form = StoreForm(request.POST, instance=store, submit_title='更新')
+        if form.is_valid():
+            store = form.save()
+            return redirect(store.get_absolute_url())
+    else:
+        # 注意這行
+        form = StoreForm(instance=store, submit_title='更新')
+    return render(request, 'stores/store_update.html', {
+        'form': form, 'store': store,
+    })
+</code></pre>
+<p>今天就到這裡。恭喜你有個（比較）好看的表單了！你可以參考 Crispy Forms 的文件，把它弄得更好看一些，例如改成 horizontal form 之類的。明天我們會進入下一個主題：使用者認證，以準備實作 delete 功能。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

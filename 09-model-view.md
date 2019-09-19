@@ -77,7 +77,8 @@ def store_list(request):
   {% endfor %}
 </div>
 
-</body>
+      </body>
+      <script src="common.js"></script>
 </html>
 ```
 
@@ -159,7 +160,8 @@ def store_detail(request, pk):
   </table>
 </div>
 
-</body>
+      </body>
+      <script src="common.js"></script>
 </html>
 ```
 

@@ -1,0 +1,162 @@
+
+    <html>
+      <head>
+        <title>Chapter07</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>我們的 <code>stores</code> app 負責管理店家資訊，所以顯然我們需要有一個 <code>Store</code> model。這個 model 裡面要可以存店家名稱與菜單的圖片。菜單上的項目當然不止一個，所以它與店家之間是多對一關聯。我們知道，多對一需要一個 foreign key，所以我們還需要另一個 model，用來放菜單項目。它們之間的關聯會像下面這樣：</p>
+<pre><code>┌───────────────┐           ┌───────────────┐
+│     Store     │           │   MenuItem    │
+├───────────────┤           ├───────────────┤
+│ name          │           │ name          │
+│ note          │ 1       n │ price         │
+│ menu_items    │ &lt;──────── │ store         │
+└───────────────┘           └───────────────┘
+</code></pre>
+<p><code>Store</code> 有兩個資料欄位，分別儲存店家名稱與其他資訊；<code>MenuItem</code> 也有兩個資料欄位，一個用來存圖片檔案位置，另一個則是圖片標題（用在 HTML <code>alt</code> tag）。<code>MenuItem</code> 另外有一個指向 <code>Store</code> 的 foreign key，叫做 <code>store</code>；這個 FK 在 <code>Store</code> 的 reverse attribute 則叫做 <code>menu_items</code>。</p>
+<p>好了，現在我們要把上面的結構轉換為 Django model 定義。打開 <code>stores/models.py</code>，加入以下的內容（記得保留第一行的 <code>import</code>）：</p>
+<pre><code class="python language-python">class Store(models.Model):
+
+    name = models.CharField(
+        max_length=20,
+    )
+    notes = models.TextField(
+        blank=True, default='',
+    )
+
+    def __str__(self):
+        return self.name
+
+
+class MenuItem(models.Model):
+
+    store = models.ForeignKey(
+        to=Store, related_name='menuitem_set',
+    )
+    name = models.CharField(
+        max_length=20,
+    )
+    price = models.IntegerField(
+    )
+
+    def __str__(self):
+        return self.name
+</code></pre>
+<p>在 Django 中，一個 model 就是一個 class。所有的 Django models 都必須繼承 <code>django.db.models.Model</code>。我們在兩個 models 中依照上面的結構，加入合適的欄位。各欄位形態的意義如下：</p>
+<ul>
+<li><code>CharField</code> 對應到資料庫的 <code>VARCHAR</code>。<code>max_length</code> 參數代表 <code>VARCHAR</code> 的長度。[註 1]</li>
+<li><code>TextField</code> 對應到 <code>TEXT</code>。<code>blank=True</code> 代表本欄位可空白（注意不是可為 <code>NULL</code>！可為 <code>NULL</code> 的欄位是使用 <code>null=True</code>，我們這裡沒有用到）；<code>default</code> 代表如果你在建立 <code>Store</code> 物件時沒有輸入本欄位，預設會使用的值。</li>
+<li><code>IntegerField</code> 對應到 <code>INTEGER</code>。</li>
+<li><code>ForeignKey</code> 是 Django 專門用來管理 foreign key 的 model field。我們來詳細討論一下它的原理。</li>
+</ul>
+<p>當你建立一個 model 時，Django 會自動幫它加入一個名為 <code>id</code> 的 <code>AutoField</code>——對應到資料庫的 <code>INTEGER</code>，加上 primary key（和 auto increment）屬性。[註 2] <code>ForeignKey</code> 同樣對應到 <code>INTEGER</code>，但當它被使用時，Django 會自動用裡面的值執行一個 <code>SELECT</code>，把該 ID 對應的物件取出來。<code>ForeignKey</code> 必須擁有兩個參數，指明這個 FK 指向的 model class，以及當一筆資料（store）被刪除時，要怎麼處理關聯它的資料（menu item）——在這裡我們指定 <code>CASCADE</code>，代表如果資料被刪除，<strong>同時把所有必要的關聯一併刪掉</strong>。[註 3]</p>
+<p>你可能已經注意到，我們並沒有為 <code>Store</code> 的 <code>menuitem_set</code> 建立 attribute，但這裡 <code>related_name</code> 的值就是它。Django 會自動建立 foreign key 的 reverse relation，所以你不需要自行建立。</p>
+<p>在 <code>ForeignKey</code> 的狀況中，Django 預設會用 model 的名稱後面加 <code>_set</code> 來當作 reverse relation 的名稱，所以 <code>MenuItem.store</code> 的預設 reverse relation key 會是 <code>Store.menuitem_set</code>。這和我們設定的值一模一樣，所以其實可以不設；不過如果狀況允許，我個人推薦盡量還是明確設定，因為 <em>explicit is better than implicit</em> 是 Python 的中心思想之一，而且這會讓你以後 trace 程式碼時更容易找到某個 reverse relation 的定義。</p>
+<p>我們另外在兩個 models 都各加上了一個 <a href="https://docs.python.org/3/reference/datamodel.html#object.__str__"><code>__str__</code></a> 函式。這是 Python 用來把物件轉換成 <code>str</code> 的 hook；因為做網站時，常常需要把東西變成字串，所以這會很方便。</p>
+<p>現在程式已經可以認得這兩種 models 了。但如果要儲存它們，還需要在資料庫裡建立對應的 tables。確保資料庫與程式中的定義同步，是件很麻煩的工作；幸好，Django 提供了一個自動同步資料表的工具，可以協助我們完成這個工作。</p>
+<p>在 console 執行以下指令：</p>
+<pre><code class="bash language-bash">pipenv run python manage.py makemigrations stores
+</code></pre>
+<p>這告訴 Django 我們更新了 <code>stores</code> 中的 models。這個指令應該會輸出下面的內容：</p>
+<pre><code>Loading .env environment variables…
+Migrations for 'stores':
+  stores/migrations/0001_initial.py
+    - Create model MenuItem
+    - Create model Store
+    - Add field store to menuitem
+</code></pre>
+<p>這代表 Django 已經偵測到你新增了 <code>MenuItem</code> 與 <code>Store</code> 兩個 models，以及它們之間的關聯。這些資訊被放在 <code>0001_initial.py</code> 中。這個檔案會被放在 <code>store/migrations</code> 目錄裡。檢查看看！</p>
+<p>我們昨天提到，每個 Django app 都可以包含 <code>migrations</code> 目錄，用來存放 database migration 記錄。這些記錄是用來告訴 Django，這個 app 中的 models 在某個時間點長什麼樣子。你可以自己寫（同樣要放在 <code>migrations</code> 目錄裡），但是在大多數的情況下，只要用 <code>makemigrations</code> 這個指令，Django 就可以自動偵測。Django 自動產生的檔案會以以個四位數字開頭，後面接一個底線，然後是 Django 偵測到<strong>這個記錄與前一個記錄間相異處的描述</strong>。</p>
+<p>接著我們要實際執行這個檔案，讓資料庫發生改變：</p>
+<pre><code class="bash language-bash">pipenv run python manage.py migrate stores
+</code></pre>
+<p>輸出：</p>
+<pre><code>Loading .env environment variables…
+Operations to perform:
+  Apply all migrations: stores
+Running migrations:
+  Applying stores.0001_initial... OK
+</code></pre>
+<p>Django 偵測到剛剛的 <code>0001_initial</code> 尚未與資料庫同步，並成功執行它。所以現在資料庫裡會多出兩個 tables。</p>
+<p>不信？證明給你看。輸入以下的指令：</p>
+<pre><code class="bash language-bash">python manage.py dbshell
+</code></pre>
+<p>這會你連上 Django 目前設定的資料庫（就是你在 <code>DATABASES</code> 裡面設定的那個）。列出目前的資料庫看看（SQLite：<code>.tables</code>、PostgreSQL：<code>\d</code>、MySQL：<code>SHOW TABLES;</code>；這裡以 SQLite 為例）：</p>
+<pre><code>sqlite&gt; .tables
+auth_group                  django_admin_log
+auth_group_permissions      django_content_type
+auth_permission             django_migrations
+auth_user                   django_session
+auth_user_groups            stores_menuitem
+auth_user_user_permissions  stores_store
+</code></pre>
+<p>其中 <code>stores_store</code> 和 <code>stores_menuitem</code> 就是我們剛剛建立的 models！</p>
+<p>不過其他的是什麼？這些是 Django 預設啟用功能所需要的資料。還記得我們剛建立 project 時有執行一次 <code>migrate</code> 嗎？這就是用來 migrate Django 內建的資料。那時我們後面沒有加 app name，所以會 migrate <strong>所有</strong> apps。</p>
+<p>在這些資料表中，<code>auth</code> 開頭的是用來管理使用者註冊與權限——所以我們之前才會先跳過使用者認證，因為 Django 內建就有。其他還有一些內部用的資料，這裡先略過。不過我們特別來看一下 <code>django_migrations</code>：</p>
+<pre><code>sqlite&gt; select * from django_migrations;
+1|contenttypes|0001_initial|2017-12-07 10:13:56.444638
+2|auth|0001_initial|2017-12-07 10:13:56.466164
+3|admin|0001_initial|2017-12-07 10:13:56.483577
+4|admin|0002_logentry_remove_auto_add|2017-12-07 10:13:56.502065
+5|contenttypes|0002_remove_content_type_name|2017-12-07 10:13:56.547797
+6|auth|0002_alter_permission_name_max_length|2017-12-07 10:13:56.558823
+7|auth|0003_alter_user_email_max_length|2017-12-07 10:13:56.572393
+8|auth|0004_alter_user_username_opts|2017-12-07 10:13:56.588283
+9|auth|0005_alter_user_last_login_null|2017-12-07 10:13:56.602905
+10|auth|0006_require_contenttypes_0002|2017-12-07 10:13:56.607146
+11|auth|0007_alter_validators_add_error_messages|2017-12-07 10:13:56.622861
+12|auth|0008_alter_user_username_max_length|2017-12-07 10:13:56.642080
+13|auth|0009_alter_user_last_name_max_length|2017-12-07 10:13:56.659138
+14|sessions|0001_initial|2017-12-07 10:13:56.665113
+15|stores|0001_initial|2017-12-07 11:20:01.623780
+</code></pre>
+<p>這就是 Django 用來記錄 migration 的表！這裡記錄了目前各 app 被 migrate 到哪個階段，以及進行的時間。這個表格搭配 <code>migrations</code> 裡面的資料，就能讓 Django 偵測 models 的修改，幫我們產生合適的 migration record，並對資料庫進行合適的設定。</p>
+<p>呼！這篇好像有點長。明天我們會實際使用這些 models 看看。</p>
+<p>對了，剛剛那個資料庫介面可以用 control-d 退出。</p>
+<p>更多關於 Django model 欄位的資訊，請參照<a href="https://docs.djangoproject.com/en/2.0/ref/models/fields/">官網文件</a>。</p>
+<hr />
+<p>註 1：SQLite 沒有固定長度字串型別，所以 <code>CharField</code> 其實是對應到 <code>TEXT</code>。不過 Django 會在程式內部檢查輸入長度，所以 <code>max_length</code> 還是會有用（除非你手動直接把值插入資料庫）。</p>
+<p>註 2：這個行為可以被覆寫，不過我們這裡不管。</p>
+<p>註 3：其他可能的值包括 <code>PROTECT</code>、<code>SET_NULL</code>、<code>SET_DEFAULT</code>、<code>SET()</code>、<code>NO_NOTHING</code>。請參照<a href="https://docs.djangoproject.com/en/2.0/ref/models/fields/#django.db.models.ForeignKey.on_delete">官方文件</a>了解各種值的差異與用法。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,169 @@
+
+    <html>
+      <head>
+        <title>Chapter13</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>我們現在可以顯示在 admin 建立的餐廳給所有人看，可是其他人並不能建立餐廳——除非他們有管理員權限。可是讓大家都有管理權限也不好。所以我們要做一個給一般人使用的 CRUD 介面。</p>
+<p>要實作 create 與 update，就需要使用 HTML form。Django 提供了一個方便的介面，方便你建立表單。</p>
+<p>Django 的表單支援源自於 <code>django.forms.Form</code> class。表單的宣告與 model 類似，只是使用的 field classes 不同。舉例而言，如果你想要有一個包含使用者名稱、密碼、以及一個「記住我」方塊的登入表單，就可以這樣宣告：</p>
+<pre><code class="python language-python">from django import forms
+from django.forms import widgets
+
+class LogInForm(forms.Form):
+    username = forms.CharField()
+    password = forms.CharField(widget=widgets.PasswordInput)
+    remember_me = forms.BooleanField(required=False)
+</code></pre>
+<p>如果在 template 中使用這個 form（例如 <code>{{ form }}</code>），Django 就會自動選擇合適的 tag，把這個 form class 轉成 HTML。如果預設的元件不合適（例如 <code>password</code> 應該要用 <code>&lt;input type="password"&gt;</code>），也可以自己指定。如果某個欄位可填可不填，就使用 <code>required=False</code>（否則預設都是必填）。</p>
+<p>不過精彩的在後面。如果你已經有一個 model，就可以直接用它的欄位建立 form，不用自己宣告！</p>
+<p>立刻做一個 view 來顯示這個 form：</p>
+<pre><code class="python language-python"># stores/view.py
+
+from django.forms.models import modelform_factory
+
+def store_create(request):
+    StoreForm = modelform_factory(Store, fields=('name', 'notes',))
+    form = StoreForm()
+    return render(request, 'stores/store_create.html', {'form': form})
+</code></pre>
+<p>就這麼簡單！<code>modelform_factory</code> 會自動偵測你的 model 裡有哪些欄位，根據它們的性質選擇合適欄位，並建立一個 form class。如果你想客製化，也可以自己 subclass <code>django.forms.ModelForm</code> 來定義，但在大多數狀況下這樣就夠了。</p>
+<p>補完需要的東西：</p>
+<pre><code class="python language-python"># stores/urls.py
+
+# ...
+url(r'^new/$', views.store_create, name='store_create'),
+# ...
+</code></pre>
+<pre><code class="html language-html">{# stores/templates/stores/store_create.html #}
+
+{% extends 'stores/base.html' %}
+
+{% block title %}建立店家 | {{ block.super }}{% endblock title %}
+
+{% block content %}
+&lt;form action="" method="post" role="form"&gt;
+  {% csrf_token %}
+  {{ form.as_p }}
+  &lt;button type="submit" class="btn btn-primary"&gt;建立&lt;/button&gt;
+&lt;/form&gt;
+{% endblock content %}
+</code></pre>
+<p>注意 Django form 只會幫你產生欄位，所以你還是得自己宣告 form tag 與 submit button。<code>as_p</code> 告訴 Django 要用 <code>&lt;p&gt;</code> 把 form field 包起來（才能換行）。你可能會覺得這 form 很醜，而且一點也不 Bootstrap。確實如此。我們明天再改。</p>
+<p>但 <code>{% csrf_token %}</code> 是什麼？如果你把 server 跑起來，然後看 <code>http://localhost:8000/store/new/</code> 的 HTML，會發現 Django 把它轉成一個像這樣的 input 欄位：</p>
+<pre><code class="html language-html">&lt;input type="hidden" name="csrfmiddlewaretoken" value="qfbg5BIB6818xpzy6Yz0OxOUcb8YxB2W" /&gt;
+</code></pre>
+<p>有關 <a href="http://zh.wikipedia.org/wiki/跨站请求伪造">CSRF</a>（cross-site request forgery）的相關知識可以參考<a href="http://cyrilwang.pixnet.net/blog/post/31813568-%5B技術分享%5D-cross-site-request-forgery-(part-1)">這篇文章</a>。詳細的不談，這裡的重點是 Django 會使用這個 token 來確認你的 form request 有否被偽造。所以如果你要使用 Django form，就必須記得加上這個欄位。</p>
+<p>不過如果你現在按新增，什麼事情都不會發生。因為即使你 post 回原本的 view（因為 <code>action=""</code>），也沒有人會處理這些資料啊。所以：</p>
+<pre><code class="python language-python"># stores/view.py
+
+from django.shortcuts import redirect, render
+
+def store_create(request):
+    StoreForm = modelform_factory(Store, fields=('name', 'notes',))
+    if request.method == 'POST':
+        form = StoreForm(request.POST)
+        if form.is_valid():
+            store = form.save()
+            return redirect(store.get_absolute_url())
+    else:
+        form = StoreForm()
+    return render(request, 'stores/store_create.html', {'form': form})
+</code></pre>
+<p>我們在建立 <code>StoreForm</code> 物件時，傳入了 <code>request.POST</code>。這裡面會包含 POST 的資料（如果你寫過 PHP，這和 <code>$._POST</code> 概念類似）。Django 會自動找到對應的欄位，根據 POST 資料填入值。如果 HTTP method 是 GET，我們直接產生一個空表單。（不考慮其他 HTTP methods，全部當成 GET 處理。）</p>
+<p>當 request method 是 POST 時，我們使用 <code>is_valid</code> 驗證表單是否完整。如果不完整，就繼續把 form render 出去——試著輸入不合法的值（例如把 <code>name</code> 留空）後送出，你應該會發現自己回到原本的頁面，但是表單內的值都還在（因為它們被存在 <code>request.POST</code> 中，在第二次 render 時又被填入 form 裡）。而且 Django 還順便幫你 render 了一個錯誤訊息 <em>This field is required.</em>！</p>
+<p>如果驗證成功，則我們呼叫 model form 的 <code>save</code> 方法。這會讓 Django 直接產生一個 model object 存到資料庫，並將它回傳。接著我們重導向到該 object 的內容頁。</p>
+<p>接著是 update。東西都差不多，所以直接上 code：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_update.html #}
+
+{% extends 'stores/base.html' %}
+
+{% block title %}更新 {{ store.name }} | {{ block.super }}{% endblock title %}
+
+{% block content %}
+&lt;form action="" method="post" role="form"&gt;
+  {% csrf_token %}
+  {{ form.as_p }}
+  &lt;button type="submit" class="btn btn-primary"&gt;更新&lt;/button&gt;
+&lt;/form&gt;
+{% endblock content %}
+</code></pre>
+<pre><code class="python language-python"># stores/urls.py
+
+# ...
+url(r'^(?P&lt;pk&gt;\d+)/update/$', views.store_update, name='store_update'),
+# ...
+</code></pre>
+<pre><code class="python language-python">def store_update(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+    StoreForm = modelform_factory(Store, fields=('name', 'notes'))
+    if request.method == 'POST':
+        form = StoreForm(request.POST, instance=store)
+        if form.is_valid():
+            store = form.save()
+            return redirect(store.get_absolute_url())
+    else:
+        form = StoreForm(instance=store)
+    return render(request, 'stores/store_update.html', {
+        'form': form, 'store': store,
+    })
+</code></pre>
+<p>我們多傳了一個參數 <code>instance</code> 進入 <code>StoreForm</code>。這告訴 Django 它應該根據這個 object 建立 form，當 save 的時候也應該 update 它，而不是建立新物件。剩下的都很直觀。</p>
+<p>我們在適當的地方新增幾個連結：</p>
+<pre><code class="html language-html">{# stores/templates/store_list.html #}
+
+{# 隨你想放哪都好，只要在 content block 裡就行。 #}
+&lt;a href="{% url 'store_create' %}" class="btn btn-default"&gt;建立店家&lt;/a&gt;
+</code></pre>
+<pre><code class="html language-html">{# stores/templates/store_detail.html #}
+
+{# 同上，只要在 content block 就好。 #}
+&lt;a href="{% url 'store_update' pk=store.pk %}" class="btn btn-default"&gt;更新店家資訊&lt;/a&gt;
+</code></pre>
+<p>到處按按，新增和更新幾個店家資訊看看！功能應該都沒問題了。</p>
+<p>明天我們要來稍微美化表單。如果你在疑惑 CRUD 是不是少了一個——我們之後會回來實作 delete！</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

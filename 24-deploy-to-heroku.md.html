@@ -1,0 +1,173 @@
+
+    <html>
+      <head>
+        <title>Chapter24</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>先從簡單的開始。一個 Django 網站的 deployment 包含以下項目：</p>
+<ol>
+<li>Django、你的網站程式碼、第三方套件。</li>
+<li>靜態檔（static files）。在 Django 中這代表所有你的網站有用到，但不是 Python 程式與 templates 的檔案，例如圖片、CSS、JavaScript 檔案等等。</li>
+<li>媒體檔（media files）。在 Django 中這代表在網站執行時動態產生的非程式檔案，例如使用者上傳的照片。</li>
+<li>WSGI HTTP 伺服器，用來執行 Python 程式。</li>
+<li>檔案 HTTP 伺服器，用來 serve static 與 media files。</li>
+<li>HTTP 伺服器，用來作為 WSGI 與檔案伺服器的統一入口。在比較小的網站中，這可以和檔案 HTTP 伺服共用同一個伺服器程式。</li>
+</ol>
+<p>我們這裡從簡單的開始：Heroku。</p>
+<p>Heroku 已經提供 HTTP 伺服器功能，而且本身不支援檔案上傳（當然你可以選擇把檔案伺服架在其他服務上，不過這邊先不談），所以我們不需要管 3 和 6，5 的設定也只要做一半。</p>
+<p>對了，你必須安裝 Git 與 Heroku Toolbelt。在遙遠的第一章裡有個安裝教學連結，如果你當初照著做，應該就已經有了。如果沒有，現在把它們裝起來。</p>
+<p>首先我們要讓 Heroku 使用 Python。建立一個檔案 <code>runtime.txt</code>，內容只有一行：</p>
+<pre><code>python-3.4.2
+</code></pre>
+<p>這個檔案必須被放在專案的最上層，也就是與你的 apps（<code>base</code>、<code>stores</code> 等等）同一層。</p>
+<p>接著要告訴 Heroku 必須裝哪些東西。Heroku 使用 PIP 的 requirements file 格式，所以我們可以在專案頂層用下面的指令快速匯出目前使用的套件：</p>
+<pre><code class="bash language-bash">pip freeze &gt; requirements.txt
+</code></pre>
+<p>打開產生的 <code>requirements.txt</code>，在最後面加入下面這行：</p>
+<pre><code>django-toolbelt
+</code></pre>
+<p>這個套件包含所有 Heroku 需要的額外套件，包括：</p>
+<ul>
+<li>Django（這我們其實上面有列了，不過沒關係）</li>
+<li>Gunicorn（WSGI server）</li>
+<li>DJ-Static（靜態檔伺服）</li>
+<li>dj-database-url 與 Psycopg2</li>
+</ul>
+<p>其中最後兩個是 Heroku 專用套件。Heroku 不支援檔案伺服，但是我們可以藉由 DJ-Static，用 WSGI 伺服模擬一個。最後一項則是用來存取資料庫；Heroku 使用 PostgreSQL，所以必須安裝它的 Python binding——Psycopg2，dj-database-url 則可以方便我們設定資料庫的參數。</p>
+<p>再來，告訴 Heroku 要怎麼執行這個網站。同樣在頂層目錄，建立 <code>Procfile</code>（注意沒有副檔名！）：</p>
+<pre><code>web: gunicorn lunch.wsgi --log-file -
+</code></pre>
+<p>這裡我們使用 <code>gunicorn</code> 這個 WSGI server，要求執行 WSGI 程式。後面的參數代表把 error log 輸出至 stderr，這樣才能讓這些 logs 被 Heroku 紀錄。</p>
+<p>很久很久以前我們提過，開發機與部署時會需要不同的設定。我們要為 Heroku 增加一個設定檔：</p>
+<pre><code class="python language-python"># lunch/settings/deploy_heroku.py
+
+from .base import *     # noqa
+import dj_database_url
+
+# 把 debug 模式關掉。
+DEBUG = False
+
+# 設定 secret key。
+SECRET_KEY = get_env_var('DJANGO_SECRET_KEY')
+
+# 尊重 HTTPS 連線中的 "X-Forwarded-Proto" header。
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# 設定靜態檔位置。
+STATIC_ROOT = 'static'
+
+# 設定資料庫。
+DATABASES = {
+    'default': dj_database_url.config()
+}
+
+# 允許所有網址連至本網站。
+ALLOWED_HOSTS = ['*']
+</code></pre>
+<p>如果你看不懂其中某些設定，沒關係，只要先記得這樣設就可以了。其中有些設定是專為 Heroku 設定的，但大部份我們之後都會再解釋。</p>
+<p>注意上面我們用到了一個 function <code>get_env_var</code>。我們要在 <code>lunch/settings/base.py</code> 定義它：[註 1]</p>
+<pre><code class="python language-python">from django.core.exceptions import ImproperlyConfigured
+
+def get_env_var(key):
+    try:
+        return os.environ[key]
+    except KeyError:
+        raise ImproperlyConfigured(
+            'Environment variable {key} required.'.format(key=key)
+        )
+</code></pre>
+<p>最後修改 <code>lunch/wsgi.py</code>，啟用 DJ-Static：</p>
+<pre><code class="python language-python"># lunch/wsgi.py
+
+import os
+from django.core.wsgi import get_wsgi_application
+from dj_static import Cling
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lunch.settings")
+application = Cling(get_wsgi_application())     # 注意這一行。
+</code></pre>
+<p>這樣就準備完成了！接著是建立 Git repository。你可能會想要先建立一個 <code>.gitignore</code> 檔案（同樣放在最頂層，和 <code>requirements.txt</code> 一起）：</p>
+<pre><code>*.py[co]
+__pycache__
+
+.env
+</code></pre>
+<p>然後執行指令：</p>
+<pre><code class="bash language-bash">git init
+git add .
+git commit -m "Make it so"
+</code></pre>
+<p>接下來我們要在 Heroku 建立一個 instance，好把我們的程式上傳。先到 <a href="http://heroku.com/">http://heroku.com/</a> 註冊一個帳號。註冊認證完成後，你應該會進入你的 Heroku dashboard。接著在終端機登入你的 Heroku 帳號：</p>
+<pre><code class="bash language-bash">heroku login
+</code></pre>
+<p>如果你是第一次登入，系統會要求上傳一個 SSH public key。請直接允許。</p>
+<p>接著建立 project：</p>
+<pre><code class="bash language-bash">heroku create &lt;project_name&gt;
+</code></pre>
+<p>名稱可以隨意取，之後這就會顯示在你的網站網址裡（不過如果有人用過這個名稱就不能再用，所以還滿容易撞名）；如果你留白，Heroku 會隨機幫你取一個很電波的名字。</p>
+<p>然後用 Git Push 上傳整個 respository：（這應該會跑一段時間）</p>
+<pre><code class="bash language-bash">git push heroku master
+</code></pre>
+<p>再建立一個 instance：</p>
+<pre><code class="bash language-bash">heroku ps:scale web=1
+</code></pre>
+<p>接著我們要設定 secret key 用到的環境變數，以及設定檔的位置。你可以自己產生一個字串來當成 secret key，或者如果不知道怎麼產生，請參考 <a href="https://djskgen.herokuapp.com/">https://djskgen.herokuapp.com/</a>。</p>
+<p>這樣設定：</p>
+<pre><code class="bash language-bash">heroku config:set DJANGO_SECRET_KEY=&lt;your_secret_key&gt;
+heroku config:set DJANGO_SETTINGS_MODULE=lunch.settings.deploy_heroku
+</code></pre>
+<p>注意 shell 中某些字元會被視為 escape sequence，所以你可能會需要用單引號把 secret key 包起來。如果你搞不定，其實 Heroku 網頁上也有地方可以設。</p>
+<p>接著重跑 migration，讓遠端的資料庫與我們之前的設定相符：</p>
+<pre><code class="bash language-bash">heroku run python manage.py migrate
+</code></pre>
+<p>如果你想在 Heroku 上執行某些指令，只要在原本的指令前面加上 <code>heroku run</code> 即可。你也可以用一樣的方法建立 superuser：</p>
+<pre><code class="bash language-bash">heroku run python manage.py createsuperuser
+</code></pre>
+<p>這樣就搞定了！打開你的網站看看：</p>
+<pre><code class="bash language-bash">heroku open
+</code></pre>
+<p>以上是最簡單的 deploy 設定，實務上還有一些可以改的東西，例如<a href="http://blog.etianen.com/blog/2014/01/19/gunicorn-heroku-django/">有人建議</a>用 <a href="https://github.com/Pylons/waitress">Waitress</a> 取代 Gunicorn（我個人也推薦用這個），或者有人習慣用 <a href="http://whitenoise.evans.io/en/latest/">Whitenoise</a> 而非 DJ-Static。不過基本上的設定都一樣。明天我們會試著把 Django deploy 到一個 Linux server 上，來看看比較進階的 deploy 設定。</p>
+<hr />
+<p>註 1：當然其實我們可以在 <code>deploy_heroku.py</code> 定義就好，但這個 function 很有用，所以我們把它丟在頂層，未來在其他地方也可以用。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

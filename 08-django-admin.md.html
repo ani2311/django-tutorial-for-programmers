@@ -1,0 +1,120 @@
+
+    <html>
+      <head>
+        <title>Chapter08</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>承接昨天的內容，我們現在要來建立幾筆店家資訊來看看。既然店家資訊是放在資料庫，我們可以直接用 SQL 把資料塞進去。或者，因為 Django 是用 ORM，我們也可以寫程式把東西放進去。不過在這種狀況下 command line 總是有點麻煩。有 GUI 的選擇嗎？</p>
+<p>有。Django 內建了一個 admin 介面，方便你快速產生一個簡單的管理平台。打開 <code>lunch/settings/base.py</code>，確認 <code>INSTALLED_APPS</code> 有包含 admin app：</p>
+<pre><code class="python language-python">INSTALLED_APPS = [
+    'django.contrib.admin',         # 這一行啟用 Django admin。
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'stores',
+]
+</code></pre>
+<p>接著打開 <code>lunch/urls.py</code>，確認 <code>admin</code> 有被對應到 Django admin：</p>
+<pre><code class="python language-python">urlpatterns = [
+    path('', home, name='home'),
+
+    # 這一行把 admin/ 下面的 URL 對應到 Django admin。
+    path('admin/', admin.site.urls),
+]
+</code></pre>
+<p><code>urls.py</code> 本身的功能我們之後再講。</p>
+<p>接著用以下的指令，建立一個超級使用者帳號（用來登入管理介面）：</p>
+<pre><code class="bash language-bash">pipenv run python manage.py createsuperuser
+</code></pre>
+<p>輸入帳號與密碼。（Pro tip: email 其實可以留白，直接按 enter 就行了！）</p>
+<p>接著把 Django 跑起來：</p>
+<pre><code class="bash language-bash">pipenv run python manage.py runserver
+</code></pre>
+<p>然後用瀏覽器打開 <a href="http://localhost:8000/admin/">http://localhost:8000/admin/</a>。你應該會看到登入頁面，輸入剛剛的帳密後就可以進入管理頁面了！</p>
+<p>不過我們之前建的 models 都沒有出來。因為我們沒有告訴 Django 要怎麼顯示它們。</p>
+<p>打開 <code>stores/admin.py</code>，把內容改成這樣：</p>
+<pre><code class="python language-python">from django.contrib import admin
+from .models import Store
+
+@admin.register(Store)
+class StoreAdmin(admin.ModelAdmin):
+    pass
+</code></pre>
+<p>我們建立了一個 store 專用的 admin，並用 <code>admin.register</code> 這個 decorator 來告訴 Django：請在 admin 中註冊 <code>Store</code> 這個 model，並使用 <code>StoreAdmin</code> 來顯示。</p>
+<p>重新整理 admin 網頁（記得 <code>runserver</code> 要繼續跑，如果它停掉了請重新執行它）。你應該會看到多了一欄 <code>Stores</code>！</p>
+<p>點右邊的 Add 來新增一筆資料。</p>
+<p><img src="assets/django-admin-add.png" alt="Admin 新增 store 介面" /></p>
+<p>按下 Save，就會多一筆資料。多建幾筆來看看！</p>
+<p>資料多了之後，列表畫面好像就有點乾。我們來把 <code>notes</code> 欄位也顯示在上面。重新修改 <code>stores/admin.py</code>，把 admin class 改成下面這樣：</p>
+<pre><code class="python language-python">@admin.register(Store)
+class StoreAdmin(admin.ModelAdmin):
+    list_display = ['name', 'notes']
+</code></pre>
+<p>這裡指定 <code>Store</code> 專用的 admin class 要在列表顯示 <code>name</code> 和 <code>notes</code>。</p>
+<p>重新整理列表頁！你應該會看到多了一個 <code>Notes</code> 欄位。</p>
+<p><img src="assets/django-admin-list.png" alt="Admin 店家列表介面" /></p>
+<p>我們再加上 <code>MenuItem</code> 的 admin：（記得 <code>import MenuItem</code>）</p>
+<pre><code class="python language-python">@admin.register(MenuItem)
+class MenuItemAdmin(admin.ModelAdmin):
+    list_display = ['name', 'price']
+</code></pre>
+<p>現在你應該可以新增菜單上的項目了。而且 Django 還會自動把 foreign key 變成一個下拉選單，並且把你所有的項目都放進去！</p>
+<p><img src="assets/django-admin-add-menu-item.png" alt="Admin 新增 menu item 介面" /></p>
+<p>不過這有點怪。通常我們新增店家的時候，都會直接加入菜單。現在這樣要先新增店家，再從 menu item 這裡新增菜單（然後選擇店家），很不方便。所以我們來用 Django admin 內建的 inline admin 功能，把 <code>MenuItem</code> 的 admin 嵌到 <code>Store</code> 的 admin 頁面裡。</p>
+<p>先新增一個 inline admin：</p>
+<pre><code class="python language-python">class MenuItemInline(admin.TabularInline):
+    model = MenuItem
+    extra = 1
+</code></pre>
+<p>然後把它加入 <code>StoreAdmin</code>：</p>
+<pre><code class="python language-python">class StoreAdmin(admin.ModelAdmin):
+    list_display = ['name', 'notes']
+    inlines = [MenuItemInline]
+</code></pre>
+<p>進入一個 <code>Store</code> 的 admin 頁面看看。那家店的菜單變成一個表格被列在下面，而且 Django 還多給你一個空白列，讓你可以繼續新增！方便多了吧。</p>
+<p>多多新增一些資料。之後會教你怎麼把這些東西列在網頁上給一般人看。</p>
+<p>今天就到這裡！Django admin 還有很多很厲害的功能，有興趣的話請自行參照<a href="https://docs.djangoproject.com/en/2.0/ref/contrib/admin/">文件</a>。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,218 @@
+
+    <html>
+      <head>
+        <title>Chapter18</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>店家的部分差不多完成了，接著我們來實作點餐部分。因為畫圖很麻煩（喂），我們直接上程式。首先建立 <code>events</code> app：</p>
+<pre><code class="bash language-bash">python manage.py startapp events
+</code></pre>
+<p>把它加入設定：</p>
+<pre><code class="python language-python"># lunch/settings/base.py
+
+INSTALLED_APPS = [
+    'events',
+    # ...
+]
+</code></pre>
+<p>然後建立 models：</p>
+<pre><code class="python language-python"># events/models.py
+
+from django.conf import settings
+from django.core.urlresolvers import reverse
+from django.db import models
+
+from stores.models import MenuItem
+
+
+class Event(models.Model):
+
+    store = models.ForeignKey('stores.Store', related_name='events')
+
+    def __str__(self):
+        return str(self.store)
+
+    def get_absolute_url(self):
+        return reverse('event_detail', kwargs={'pk': self.pk})
+
+
+class Order(models.Model):
+
+    event = models.ForeignKey(Event, related_name='orders')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='orders')
+    item = models.ForeignKey(MenuItem, related_name='orders')
+    notes = models.TextField(blank=True, default='')
+
+    class Meta:
+        unique_together = ('event', 'user',)
+
+    def __str__(self):
+        return '{item} of {user} for {event}'.format(
+            item=self.item, user=self.user, event=self.event
+        )
+</code></pre>
+<p>現在你應該可以看懂絕大部分的內容了（<code>reverse</code> 的部分先不管，我們之後再建這個 URL pattern）。但好像還是有個新東西——什麼是 <code>class Meta</code>？</p>
+<p>我們之前在討論 model form 時，就有用到 meta。這並不是 Python 的 <a href="http://python-3-patterns-idioms-test.readthedocs.org/en/latest/Metaprogramming.html">metaclass</a>，而是 Django 用來提示某個 class 應該擁有什麼屬性的工具。以 model form 而言，在 meta 中指定 <code>model</code> 屬性，就可以讓 Django 自動把該 model 中的某些欄位增加至 form 中，並且在 form 被 save 時自動產生對應的 model instance；model meta 則可以用來描述這個 model 的一些性質，以及跨欄位間的關聯。這裡我們指定了 <code>unique_together</code>，代表 <code>event</code> 和 <code>user</code> 這兩個欄位的組合必須 unique——限制一個使用者只能在一次 event 中點一次餐。</p>
+<p>把 models 對應的 tables 建出來：</p>
+<pre><code class="base language-base">python manage.py makemigrations events
+python manage.py migrate events
+</code></pre>
+<p>順便把它們也加入 admin：</p>
+<pre><code class="python language-python"># events/admin.py
+
+from django.contrib import admin
+from .models import Event, Order
+
+class OrderInline(admin.StackedInline):
+    model = Order
+    extra = 1
+
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    inlines = [OrderInline]
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['event', 'item', 'user']
+</code></pre>
+<p>應該都不用解釋了。我們這裡用 <code>StackedInline</code> 替換了 <code>stores</code> 裡面用的 <code>TabularInline</code>，不過它們只有外觀不同（一個是 div-based，一個是 table-based），用起來效果一樣。</p>
+<p>接著是 views。我們想要達成以下的效果：</p>
+<ol>
+<li>已登入的使用者可以在 store detail view 看到一個按鈕，按下去可以根據該店家建立新 event 讓大家來點餐。</li>
+<li>建立完 event 後進入 event detail view。</li>
+<li>所有人的點餐都會記錄在 event detail view 裡面。</li>
+<li>已登入的使用者可以進入 event detail view 填 form 點餐。點完之後頁面會重新整理顯示最新狀態。</li>
+<li>使用者也可以在同一頁面修改或刪除自己的 order。</li>
+</ol>
+<p>所以我們需要為 event 與 order 建立 CRUD 頁面。當然，我們可以和前面一樣，建立需要的 model forms 與 views。不過你不覺得做的事情都重複了嗎？這樣一直寫一樣的東西就飽了！</p>
+<p>所以 Django 提供了一個簡化 view 撰寫的工具：generic views。為了達到重用並保持擴充性，generic views 是用 class 配合 factory function 實作（有興趣的話可以<a href="http://ccbv.co.uk/projects/Django/1.7/django.views.generic.base/View/">看源碼</a>），所以我們不再需要宣告 view functions，而是要繼承 Django 提供的 generic view <em>classes</em>。但這些類別裡面做的事情，其實還是和 view functions 相同。</p>
+<p>常用的 generic views 有：</p>
+<ul>
+<li><code>DetailView</code>：顯示<strong>一個</strong> model instance 的內容。</li>
+<li><code>ListView</code>：顯示「<strong>數個</strong>」model instances（用 queryset 表示）的內容。支援 pagination。</li>
+<li><code>CreateView</code>：顯示<strong>一個</strong> model form，接收 GET 與 POST 以建立 model instance。</li>
+<li><code>UpdateView</code>：和 <code>CreateView</code> 類似，但是是用來更新 model instance（會指定 model form 的 <code>instance</code> 參數）。</li>
+<li><code>DeleteView</code>：接收 POST 以刪除 model instance。也可以接收 GET，會顯示一個刪除用的 form（類似 admin 刪除時會出現的確認頁面）。</li>
+<li><code>TemplateView</code>：顯示某個特定的 template 內容。</li>
+<li><code>RedirectView</code>：回傳 <code>redirect</code> response。</li>
+</ul>
+<p>這些 view classes 都是用 <code>django.views.generic.View</code> 與許多 <a href="http://blog.csdn.net/gzlaiyonghao/article/details/1656969">mixins</a> 組成，所以如果你有一天想做一些沒有內建功能的 view，也不見得就要自己從頭寫 function；說不定你可以重用一些 mixins 來達成目標！</p>
+<p>再說下去也有點空泛，我們直接上例子。首先建立 model form：</p>
+<pre><code class="python language-python"># events/forms.py
+
+from django import forms
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
+from .models import Event
+
+class EventForm(forms.ModelForm):
+
+    class Meta:
+        model = Event
+        fields = ['store']
+
+    def __init__(self, *args, submit_title='Submit', **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.add_input(Submit('submit', submit_title))
+</code></pre>
+<p>把 <code>events/views.py</code> 的內容換成這樣：</p>
+<pre><code class="python language-python">from django.views.generic import CreateView, DetailView
+from .forms import EventForm
+from .models import Event
+
+class EventCreateView(CreateView):
+    form_class = EventForm
+    model = Event
+
+class EventDetailView(DetailView):
+    model = Event
+</code></pre>
+<p>然後建立下面三個 templates：</p>
+<pre><code class="html language-html">{# events/templates/events/base.html #}
+
+{% extends 'base.html' %}
+
+{% block body %}
+{{ block.super }}
+&lt;div class="container"&gt;{% block content %}{% endblock content %}&lt;/div&gt;
+{% endblock body %}
+</code></pre>
+<pre><code class="html language-html">{# events/templates/events/event_form.html #}
+
+{% extends 'events/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+{% crispy form %}
+{% endblock content %}
+</code></pre>
+<pre><code class="html language-html">{# events/templates/events/event_detail.html #}
+
+{% extends 'events/base.html' %}
+
+{% block content %}
+&lt;h1&gt;今天吃：{{ event }}。快點餐！&lt;/h1&gt;
+{% endblock content %}
+</code></pre>
+<p>最後是 URL patterns。建立 <code>events/urls.py</code></p>
+<pre><code class="python language-python">from django.conf.urls import url
+from . import views
+
+urlpatterns = [
+    url(r'^new/$', views.EventCreateView.as_view(), name='event_create'),
+    url(r'^(?P&lt;pk&gt;\d+)/$', views.EventDetailView.as_view(),
+        name='event_detail'),
+]
+</code></pre>
+<p>然後把它包含到 <code>lunch/urls.py</code>：</p>
+<pre><code class="python language-python">urlpatterns = [
+    # ...
+    url(r'^event/', include('events.urls')),
+    # ...
+]
+</code></pre>
+<p>完成！去 <a href="http://localhost:8000/event/new/">http://localhost:8000/event/new/</a> 新增一個 event。按下 <strong>Submit</strong> 後，你應該會直接被導向 event 的 detail view。</p>
+<p>有跟上嗎？為什麼 views 可以這樣找到 templates，而且建立後還能自動重導向？這就是 generic views 的威力——對於簡單的應用而言，幾乎不用設定任何東西，就可以寫出你要的架構。我們明天會詳細解釋它們究竟做了什麼。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

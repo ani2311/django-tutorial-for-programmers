@@ -1,0 +1,129 @@
+
+    <html>
+      <head>
+        <title>Chapter16</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>我們想在這個專案達成的權限管理如下：</p>
+<ol>
+<li>只有已登入的使用者可以刪除店家。</li>
+<li>每個使用者都能刪除自己建立的，以及未登入使用者建立的店家。</li>
+<li>擁有店家刪除權限的管理員（含超級使用者）可以刪除別人建立的店家。</li>
+</ol>
+<p>所以首先要為 <code>Store</code> 增加一個 <code>owner</code> 欄位，用來記錄建立者。我們已經知道這要用 <code>ForeignKey</code> 欄位⋯⋯不過這個 fk 要指向哪裡？</p>
+<p>當需要指向其他 app 中的 model 時，foreign key 的目標必須寫成 <code>appname.ModelName</code> 的形式。在預設狀況下，使用者的 model 是 <code>auth.User</code>。但我們不直接使用它，因為 Django 提供了<strong>替換使用者 model</strong> 的功能，使用者的 model 可以放在別的地方，不一定是 <code>auth.User</code>。當你使用自訂使用者 model 時，必須修改設定中的 <code>AUTH_USER_MODEL</code> 值，指向你自己的 model。</p>
+<p>為了未來維護方便，雖然我們這裡是用預設的 model，還是建議永遠使用設定值，未來維護上會比較方便。所以我們這樣修改 <code>stores/models.py</code>：</p>
+<pre><code class="python language-python">from django.conf import settings
+# ...
+
+class Store(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, related_name='owned_stores',
+    )
+    # ...
+</code></pre>
+<p>接著用 migration 把這個欄位同步進資料庫：</p>
+<pre><code class="bash language-bash">python manage.py makemigrations stores
+python manage.py migrate stores
+</code></pre>
+<p>去 admin 看看，store 應該都多了一個 Owner 欄位可以選。</p>
+<p>但如果你現在去 <code>/store/create/</code> 頁面新增店家，會看到一個錯誤頁面。這是因為我們剛剛新增的 <code>owner</code> 欄位不能是空白，但我們並沒有告訴 Django 要怎麼處理。所以我們必須修改 view，在適當時候填入目前的使用者。打開 <code>stores/views.py</code>，在 <code>store_create</code> 中找到這段：（注意 <code>store_update</code> 也有一樣的，不要改錯啊！）</p>
+<pre><code class="python language-python">if form.is_valid():
+    store = form.save()
+    return redirect(store.get_absolute_url())
+</code></pre>
+<p>改成下面這樣：</p>
+<pre><code class="python language-python">if form.is_valid():
+    store = form.save(commit=False)
+    if request.user.is_authenticated():
+        store.owner = request.user
+    store.save()
+    return redirect(store.get_absolute_url())
+</code></pre>
+<p>之前提過，如果呼叫 model form 的 save，Django 就會用 form 中的資料建立一個 model instance，將它儲存至資料庫，接著回傳。但我們現在不想要直接儲存，而是希望先再填入填入一些東西，所以在儲存 form 時我們傳入 <code>commit=False</code> 要求 Django 只建立 model instance 就直接回傳，先不要儲存至資料庫。接著我們判斷目前的登入狀況。這裡的 <code>request.user</code> 就和 template 中的 user 相同，所以應該不難理解——只要注意 <code>is_authenticated</code> 是 method，不是 variable，所以要加後面的括弧。等我們修改完這個 instance 後，再自己呼叫 model 的 <code>save</code> method 來將它儲存至資料庫（在預設情況下，model form 的 <code>save</code> 會自動幫你呼叫 model 的 <code>save</code>）。</p>
+<p>試著用已登入與未登入使用者各建立一個店家，在 admin 看看是否有自動填入使用者。</p>
+<p>現在我們可以來實作 delete view 了。在 <code>stores/view.py</code> 新增：</p>
+<pre><code class="python language-python">from django.http import HttpResponseForbidden
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+
+@login_required
+@require_http_methods(['POST'])
+def store_delete(request, pk):
+    try:
+        store = Store.objects.get(pk=pk)
+    except Store.DoesNotExist:
+        raise Http404
+    if (not store.owner or store.owner == request.user
+            or request.user.has_perm('store_delete')):
+        store.delete()
+        return redirect('store_list')
+    return HttpResponseForbidden()
+</code></pre>
+<p>唔，多了好多沒看過的東西。如果你不熟悉 Python decorator，請先<a href="http://simeonfranklin.com/blog/2012/jul/1/python-decorators-in-12-steps/">看懂這篇</a>。我們這裡使用了兩個 decorators：</p>
+<ol>
+<li><code>login_required</code>：限制只有已登入使用者才能進入這個 view。（如果未登入而使用這個 view 會得到 403 Forbidden。）</li>
+<li><code>require_http_methods</code>：限制這個 view 可以接收的 HTTP methods。這裡我們限制必須使用 POST。[註 1]</li>
+</ol>
+<p>所以這個 method 只有已登入的使用者可以用 POST 進入。</p>
+<p>接著我們找到 store object，判斷是否可刪除；如果可以，用 <code>delete</code> method 達成目的（否則同樣吐一個 403 Forbidden），接著重導向至 <code>store_list</code>。</p>
+<p>加入這個 URL pattern：</p>
+<pre><code class="python language-python"># stores/urls.py
+
+# ...
+url(r'^(?P&lt;pk&gt;\d+)/delete/$', views.store_delete, name='store_delete'),
+# ...
+</code></pre>
+<p>接著在 <code>stores/templates/stores/store_detail.html</code> 中加入 delete form：</p>
+<pre><code class="html language-html">&lt;form method="post" action="{% url 'store_delete' store.pk %}"&gt;
+  {% csrf_token %}
+  &lt;button type="submit" class="btn btn-danger"&gt;刪除&lt;/button&gt;
+&lt;/form&gt;
+</code></pre>
+<p>記得 <code>{% csrf_token %}</code> 啊。試著用不同的使用者登入（包含不登入），刪除看看有 owner 屬性的店家，看看結果。應該只有刪除自己的會成功，其他通通都會失敗。</p>
+<p>不過這失敗的方法好像不太優秀。使用者在不能 delete 時會看到一片白，也不知道究竟發生了什麼事。能不能只在能刪除的時候才顯示刪除按鈕啊？</p>
+<p>當然可以，事實上我們在 view 裡面就有判斷這個，只要拿出來重用就好了。不過這就等明天！</p>
+<hr />
+<p>註 1：如果你熟悉 REST，可能會覺得這裡不該用 POST，應該換成 DELETE。是這樣沒錯，但 Django 由於瀏覽器相容的緣故，預設並沒有支援除了 GET 與 POST 的 methods。這不是無法克服——其實我們明天就會講到怎麼實作。但目前我們就先用 POST 來示範。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

@@ -1,0 +1,123 @@
+
+    <html>
+      <head>
+        <title>Chapter10</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>昨天結束時，我們說要稍微改寫一下目前的程式。不過在那之前，我們得先建立一個方法，確認這些改寫不會破壞網站目前已有的功能。所以我們要來寫測試。我們的網站目前沒什麼特別的功能，所以或許還不需要<a href="http://zh.wikipedia.org/zh/单元测试">單元測試</a>；但至少我們要確認每個頁面都沒有壞掉。</p>
+<p>Django 主要使用 Python 內建的 <a href="https://docs.python.org/3/library/unittest.html">unittest</a> 模組進行測試，並為它新增了一些相關功能。所有的 Django 測試都可以寫在 app directory 裡的 <code>tests</code> 模組。</p>
+<p>來跑跑看 Django 的測試指令：</p>
+<pre><code class="bash language-bash">python manage.py test
+</code></pre>
+<pre><code>Creating test database for alias 'default'...
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+OK
+Destroying test database for alias 'default'...
+</code></pre>
+<p>因為我們還沒寫任何測試，所以當然什麼都沒有。即使如此，上面的輸出還是有玄機。Django 在測試時會使用一個測試專用的資料庫，並在測試結束時移除它。所以如果你不是使用 SQLite，請確認你的資料庫帳號有<strong>建立資料庫</strong>的權限，且沒有與測試資料庫同名（<code>test_</code> 加上正式使用的資料庫名稱）的資料庫。[註 1]</p>
+<p>好，開始正式寫測試吧。打開 <code>stores/tests.py</code>，加入以下內容：</p>
+<pre><code class="python language-python">class HomeViewTests(TestCase):
+    def test_home_view(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'home.html')
+</code></pre>
+<p>如果你沒用過 <code>unittest</code> 模組：Python 會自動尋找 <code>TestCase</code> subclass 中以 <code>test</code> 開頭的 methods 並執行。<code>assert</code> 開頭的 method 是測試的重點，失敗的話整個測試就會被標注為 failed；<code>assertEqual</code> 是用來測試兩個引數是否相等。</p>
+<p>前面說過，Django 擴充了內建的單元測試工具。<code>client</code> 是一個虛擬的瀏覽物件，可以用來測試 Django 有沒有正常運作（但並沒有真的發 HTTP request，而是用 mocking 直接測試 URL routing 與 views）。<code>assertTemplateUsed</code> 則是 Django 特製的測試方法，用來測試某個 template 是否有真的被用到。</p>
+<p>我們來執行看看：</p>
+<pre><code>$ python manage.py test
+Creating test database for alias 'default'...
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.012s
+
+OK
+Destroying test database for alias 'default'...
+</code></pre>
+<p>這樣就代表測試成功。把測試內容改一改，故意讓它失敗（例如把 200 改成 201），看看輸出有什麼不同！</p>
+<p>接著我們要來測試店家列表與內容頁。不過記得，測試資料庫是另外建立的，所以裡面什麼東西都沒有。我們要想辦法餵東西進去，才有店家資料可以測。為了這個目的，我們必須在每個測試執行之前，都先執行一些程式（建立物件）；並在它們結束之後執行另一段程式（清除物件）。在 <code>unittest</code> 裡面，是用 <code>setUp</code> 與 <code>tearDown</code> 來進行這些工作：</p>
+<pre><code class="python language-python">from .models import Store
+
+class StoreViewTests(TestCase):
+
+    def setUp(self):
+        Store.objects.create(name='肯德基', notes='沒有薄皮嫩雞倒一倒算了啦')
+
+    def tearDown(self):
+        Store.objects.all().delete()
+
+    def test_list_view(self):
+        r = self.client.get('/store/')
+        self.assertContains(
+            r, '&lt;a class="navbar-brand" href="/"&gt;午餐系統&lt;/a&gt;',
+            html=True,
+        )
+        self.assertContains(r, '&lt;a href="/store/1/"&gt;肯德基&lt;/a&gt;', html=True)
+        self.assertContains(r, '沒有薄皮嫩雞倒一倒算了啦')
+</code></pre>
+<p>我們用到了一個 manager method <code>create</code>，以及一個 query method <code>delete</code>。用法應該很直觀，就不特別解釋了。</p>
+<p>測試中的 <code>assertContains</code> 可以用來檢查 Django 回傳的內容中是否有包含某些特定值。這可以用來檢查純文字，也可以用來檢查 HTML（設定 <code>html=True</code>）。在後者的狀況中，Django 會自動把空白與換行等符號去掉，所以即使你不需要寫出與輸入的 HTML 完全相等的測試字串；只要語意上相等即可。</p>
+<p>最後是店家內容：</p>
+<pre><code class="python language-python">    def setUp(self):    # 修改原本的內容。
+        Store.objects.create(name='肯德基', notes='沒有薄皮嫩雞倒一倒算了啦')
+        # 新增下面這兩行。記得 import MenuItem。
+        mcdonalds = Store.objects.create(name='McDonalds')
+        MenuItem.objects.create(store=mcdonalds, name='大麥克餐', price=99)
+
+    def test_detail_view(self):
+        response = self.client.get('/store/2/')
+        self.assertContains(
+            response, '&lt;tr&gt;&lt;td&gt;大麥克餐&lt;/td&gt;&lt;td&gt;99&lt;/td&gt;&lt;/tr&gt;',
+            html=True,
+        )
+</code></pre>
+<p>寫太多感覺好像在騙篇幅，所以我就只列一些。事實上在這裡我們同樣應該測試 <code>store.name</code>、<code>store.notes</code> 與 nav bar 有沒有正確顯示。</p>
+<p>這裡也可以看到，其實 <code>create</code> 會回傳你剛剛建立的物件，而且可以直接傳入 foreign key 欄位。另外，我們刻意在測試中使用寫死的路徑，而不是 <code>reverse</code>——因為我們就是想知道這些路徑的結果；如果壞掉了，我們應該要被通知。</p>
+<p>這樣我們應該該測的都有測到了。跑起來看看吧！三個測試都應該成功。有了這些測試，我們改起程式就更有底氣。明天我們會著手進行。</p>
+<hr />
+<p>註 1：資料庫名稱可以改；如果你沒有合適的權限，也可以手動建立後告訴 Django 不要自己建。不過這些設定就超過本文範圍了。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>

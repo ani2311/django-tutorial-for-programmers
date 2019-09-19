@@ -1,0 +1,109 @@
+
+    <html>
+      <head>
+        <title>Chapter20</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" type="text/css" href="style.css">
+      </head>
+      <body>
+<div class="nav">
+        <ul>
+          <li><a href="01-before-we-start.md.html">ch01 before we start</a></li>
+          <li><a href="02-how-does-django-work.md.html">ch02 how does django work</a></li>
+          <li><a href="03-a-new-project.md.html">ch03 a new project</a></li>
+          <li><a href="04-run-your-project.md.html">ch04 run your project</a></li>
+          <li><a href="05-django-apps.md.html">ch05 django apps</a></li>
+          <li><a href="06-first-view.md.html">ch06 first view</a></li>
+          <li><a href="07-django-models.md.html">ch07 django models</a></li>
+          <li><a href="08-django-admin.md.html">ch08 django admin</a></li>
+          <li><a href="09-model-view.md.html">ch09 model view</a></li>
+          <li><a href="10-testing.md.html">ch10 testing</a></li>
+          <li><a href="11-view-refactoring.md.html">ch11 view refactoring</a></li>
+          <li><a href="12-view-refactoring-2.md.html">ch12 view refactoring 2</a></li>
+          <li><a href="13-form-view.md.html">ch13 form view</a></li>
+          <li><a href="14-django-crispy-form.md.html">ch14 django crispy form</a></li>
+          <li><a href="15-django-contrib-auth.md.html">ch15 django contrib auth</a></li>
+          <li><a href="16-django-contrib-auth-2.md.html">ch16 django contrib auth 2</a></li>
+          <li><a href="17-template-tags-and-ajax.md.html">ch17 template tags and ajax</a></li>
+          <li><a href="18-events.md.html">ch18 events</a></li>
+          <li><a href="19-class-based-view.md.html">ch19 class based view</a></li>
+          <li><a href="20-class-based-view-attributes.md.html">ch20 class based view attributes</a></li>
+          <li><a href="21-class-based-view-overrides.md.html">ch21 class based view overrides</a></li>
+          <li><a href="22-formsets.md.html">ch22 formsets</a></li>
+          <li><a href="23-finishing-touches.md.html">ch23 finishing touches</a></li>
+          <li><a href="24-deploy-to-heroku.md.html">ch24 deploy to heroku</a></li>
+          <li><a href="25-deploy-to-ubuntu-server.md.html">ch25 deploy to ubuntu server</a></li>
+          <li><a href="26-rest-api.md.html">ch26 rest api</a></li>
+          <li><a href="27-internationalisation.md.html">ch27 internationalisation</a></li>
+          <li><a href="28-logging-data-migration-and-media-files.md.html">ch28 logging data migration and media files</a></li>
+          <li><a href="29-template-tags-explained.md.html">ch29 template tags explained</a></li>
+          <li><a href="30-moving-on.md.html">ch30 moving on</a></li>
+        </ul>
+      </div>
+        <div id='content'>
+    <p>複習一下我們前天說的需求：</p>
+<ol>
+<li>已登入的使用者可以在 store detail view 看到一個按鈕，按下去可以根據該店家建立新 event 讓大家來點餐。</li>
+<li>建立完 event 後進入 event detail view。</li>
+<li>所有人的點餐都會記錄在 event detail view 裡面。</li>
+<li>已登入的使用者可以進入 event detail view 填 form 點餐。點完之後頁面會重新整理顯示最新狀態。</li>
+<li>使用者也可以在同一頁面修改或刪除自己的 order。</li>
+</ol>
+<p>我們現在有 <code>EventCreateView</code>，可是這不是我們要的——我們是希望可以直接在 store detail view 建立 event，不是在 event create view 自己選。</p>
+<p>所以我們要把 event 的 form 放到 <code>store_detail</code> 裡：</p>
+<pre><code class="python language-python"># stores/views.py
+
+from django.core.urlresolvers import reverse
+from events.forms import EventForm
+
+def store_detail(request, pk):
+    # ...
+    event_form = EventForm(initial={'store': store}, submit_title='建立活動')
+    event_form.helper.form_action = reverse('event_create')
+    return render(request, 'stores/store_detail.html', {
+        'store': store, 'event_form': event_form,
+    })
+</code></pre>
+<p>我們在初始化 <code>EventForm</code> 時用了一個新參數 <code>initial</code>，在 form 出現之前先為某個欄位指定初始值。因為我們要把這個 form post 到 <code>EventCreateView</code>，所以必須用 <code>helper</code> 的 <code>form_action</code> 參數自訂 HTML form tag 中的 <code>action</code> attribute（預設會被 post 到目前的 URL）。</p>
+<p>接著在 template 產生這個 form：</p>
+<pre><code class="html language-html">{# stores/templates/stores/store_detail.html #}
+
+{% load crispy_forms_tags %}
+
+{# 加在 "{% endblock content %}" 前面 #}
+{% if user.is_authenticated %}
+{% crispy event_form %}
+{% endif %}
+</code></pre>
+<p>打開一個 store detail page 看看，最下面應該多了一個建立活動的 form⋯⋯欸不過都在 store detail view 了，為什麼還能選建立活動要用的店家？雖然已經選好了，不過這根本不該存在吧！？</p>
+<p>所以我們要把它藏起來。把 <code>EventForm</code> 的 <code>Meta</code> 改成這樣：</p>
+<pre><code class="python language-python"># events/forms.py
+
+class Meta:
+    model = Event
+    fields = ['store']
+    widgets = {'store': forms.HiddenInput}   # 加上這行
+</code></pre>
+<p>重新整理看看。選擇項消失了！Django 在把 form 轉成 HTML form 時，會自動根據欄位形態選擇合適的 HTML tag；但如果你不滿意預設值，也可以用 <code>widgets</code> 來明確要求 Django 在某個欄位使用特定 widget。這裡我們要求 <code>store</code> 欄位使用 <code>HiddenInput</code>，所以 Django 就會把它 render 成 <code>&lt;input type="hidden"&gt;</code>。但 form 本身的功能不會變！</p>
+<p>試著在 store detail view 中用這個 form 建立 event 看看！效果應該和直接使用 <code>EventCreateView</code> 一樣。</p>
+<p>既然我們可以直接在店家頁面建立 event，好像就不需要顯示 <code>EventCreateView</code> 了。要怎麼像之前的 <code>store_delete</code> 一樣，只允許 POST 而不允許 GET？</p>
+<p>用 function-based views 時，我們會用 <code>require_http_methods</code> decorator。在 class-based views 中，我們使用 <code>http_method_names</code> attribute：</p>
+<pre><code class="python language-python"># events/views.py
+
+class EventCreateView(CreateView):
+    form_class = EventForm
+    http_method_names = ['post']    # 只允許 POST！
+    model = Event
+</code></pre>
+<p>注意這裡要用小寫——還記得昨天的內容嗎？因為 CBV 在檢查 HTTP 動詞時會用 <code>lower()</code> 把 <code>request.method</code> 的內容轉成小寫！</p>
+<p>直接在瀏覽器中開啟 <a href="http://localhost:8000/event/new/">http://localhost:8000/event/new/</a> 看看。你應該會看到空白頁面，且終端機中會出現這樣的 log：</p>
+<pre><code>"GET /event/new/ HTTP/1.1" 405 0
+</code></pre>
+<p>代表你收到了 405 Method not allowed。但如果你從 store detail view 中，還是可以 POST 到 <code>/event/new/</code> 沒問題，因為 POST 有被允許。</p>
+<p>對了，既然現在不能 GET，而且 POST 成功後會被重導向到 event detail view，其實 event create view 根本完全不會用到 template——所以你其實可以把 <code>event_form.html</code> 刪掉了。</p>
+<p>今天就到這裡。明天我們會開始實作點餐的部分。</p>
+
+        </div>
+        
+            </body>
+      <script src="common.js"></script>
+    </html>
